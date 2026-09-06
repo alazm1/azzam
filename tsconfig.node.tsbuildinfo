@@ -1,0 +1,1 @@
+{"root":["./vite.config.ts","./tests/engine/fixtures.test.ts","./tests/engine/parser.test.ts","./tests/helpers/node.ts","./tests/helpers/score.ts","./scripts/bench.ts","./scripts/debug-cell.ts","./scripts/debug-grid.ts","./scripts/debug-parse.ts"],"version":"5.9.3"}

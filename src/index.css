@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Cairo';
+  src: url('/fonts/Cairo-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cairo';
+  src: url('/fonts/Cairo-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'Cairo', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  --color-primary: #0f7a4f;
+  --color-primary-dark: #0b5c3b;
+  --color-primary-light: #e3f3ea;
+  --color-primary-soft: #c9ecd9;
+  --color-ink: #16261f;
+  --color-muted: #6b7a72;
+  --color-line: #e2e8e4;
+  --color-surface: #ffffff;
+  --color-canvas: #f4f7f5;
+  --color-warn: #b7791f;
+  --color-warn-light: #fff4dd;
+  --color-danger: #c0392b;
+  --color-danger-light: #fde8e6;
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(16 38 31 / 0.05), 0 4px 16px rgb(16 38 31 / 0.06);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-line);
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    padding-inline: 1.25rem;
+    font-weight: 700;
+    min-height: 3.25rem;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    user-select: none;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: var(--color-primary-dark);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .btn-secondary {
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+  }
+  .btn-secondary:hover {
+    background: var(--color-primary-soft);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-muted);
+  }
+  .btn-ghost:hover {
+    background: var(--color-line);
+  }
+  .btn-danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+  }
+  .field {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0.625rem 0.75rem;
+    font-size: 1rem;
+    outline: none;
+  }
+  .field:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+  }
+  .label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-muted);
+  }
+}
+
+/* keep the page from scrolling sideways on phones */
+html, body, #root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}

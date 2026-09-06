@@ -1,0 +1,131 @@
+{
+  "name": "04-days-rows",
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "١/أ"
+    },
+    {
+      "day": "sun",
+      "period": 2,
+      "className": "٢/ب"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "٣/أ"
+    },
+    {
+      "day": "sun",
+      "period": 5,
+      "className": "١/ب"
+    },
+    {
+      "day": "sun",
+      "period": 7,
+      "className": "٢/أ"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "٢/أ"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "١/أ"
+    },
+    {
+      "day": "mon",
+      "period": 3,
+      "className": "٣/أ"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "٢/ب"
+    },
+    {
+      "day": "mon",
+      "period": 6,
+      "className": "١/ب"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "٣/أ"
+    },
+    {
+      "day": "tue",
+      "period": 3,
+      "className": "١/ب"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "٢/أ"
+    },
+    {
+      "day": "tue",
+      "period": 6,
+      "className": "١/أ"
+    },
+    {
+      "day": "tue",
+      "period": 7,
+      "className": "٢/ب"
+    },
+    {
+      "day": "wed",
+      "period": 1,
+      "className": "١/ب"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "٢/ب"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "١/أ"
+    },
+    {
+      "day": "wed",
+      "period": 5,
+      "className": "٣/أ"
+    },
+    {
+      "day": "wed",
+      "period": 7,
+      "className": "٢/أ"
+    },
+    {
+      "day": "thu",
+      "period": 1,
+      "className": "٣/أ"
+    },
+    {
+      "day": "thu",
+      "period": 2,
+      "className": "٢/أ"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "١/ب"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "٢/ب"
+    },
+    {
+      "day": "thu",
+      "period": 7,
+      "className": "١/أ"
+    }
+  ]
+}

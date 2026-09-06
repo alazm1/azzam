@@ -1,0 +1,126 @@
+{
+  "name": "08-merged-empty",
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "١/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "٣/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 5,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 7,
+      "className": "٢/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "٢/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "١/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "٢/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 6,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "٣/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 3,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 6,
+      "className": "١/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 1,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "٢/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 5,
+      "className": "٣/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 7,
+      "className": "٢/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 1,
+      "className": "٣/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 2,
+      "className": "٣/أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "١/ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 7,
+      "className": "١/أ",
+      "subject": "رياضيات"
+    }
+  ]
+}

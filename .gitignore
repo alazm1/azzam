@@ -1,0 +1,8 @@
+node_modules
+dist
+dev-dist
+public/tesseract
+tests/output
+*.log
+.DS_Store
+tests/output

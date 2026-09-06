@@ -1,0 +1,156 @@
+{
+  "name": "01-madrasati",
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "أول متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 2,
+      "className": "ثاني متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "ثالث متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 5,
+      "className": "أول متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 7,
+      "className": "ثاني متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "ثاني متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "أول متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 3,
+      "className": "ثالث متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "ثاني متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 6,
+      "className": "أول متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "ثالث متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 3,
+      "className": "أول متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "ثاني متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 6,
+      "className": "أول متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 7,
+      "className": "ثاني متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 1,
+      "className": "أول متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "ثاني متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "أول متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 5,
+      "className": "ثالث متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 7,
+      "className": "ثاني متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 1,
+      "className": "ثالث متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 2,
+      "className": "ثاني متوسط أ",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "أول متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "ثاني متوسط ب",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 7,
+      "className": "أول متوسط أ",
+      "subject": "رياضيات"
+    }
+  ]
+}
