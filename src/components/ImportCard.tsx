@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { arabic } from '../models/design';
-import { bookmarkletSource, tablesFromHtml, tablesFromText, type CapturedPayload } from '../services/tableImport';
 
 export interface ReadProgress {
   percent: number;
@@ -15,12 +14,10 @@ interface Props {
   previews: string[];
   onFiles: (files: File[]) => void;
   onReview: () => void;
-  /** Tables pasted from a web page (Madrasati); returns true when a schedule was imported. */
-  onPaste: (payload: CapturedPayload) => boolean;
 }
 
 /** Step 1 — photograph or pick the schedule image(s). */
-export function ImportCard({ progress, error, canReview, previews, onFiles, onReview, onPaste }: Props) {
+export function ImportCard({ progress, error, canReview, previews, onFiles, onReview }: Props) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <section className="rounded-2xl border border-line bg-[linear-gradient(145deg,#f5fbf8,#fff)] p-5 sm:p-6" aria-label="صوّر جدولك">
@@ -90,96 +87,6 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
         </button>
       )}
       <p className="mt-4 text-center text-xs text-muted">✓ تُقرأ الصور داخل جهازك ولا تُرفع إلى خادم</p>
-      <MadrasatiExport onPaste={onPaste} />
     </section>
-  );
-}
-
-/**
- * "زر جدولي": a bookmark the teacher adds once to the phone's browser. Tapped
- * on the schedule page inside Madrasati (their own logged-in session), it
- * sends the table straight to the app. No credentials, no server.
- */
-function MadrasatiExport({ onPaste }: { onPaste: (payload: CapturedPayload) => boolean }) {
-  const [copied, setCopied] = useState(false);
-  const [pasteNote, setPasteNote] = useState('');
-  const [pasted, setPasted] = useState('');
-
-  const importText = (html: string, text: string) => {
-    const tables = html ? tablesFromHtml(html) : [];
-    const fromText = tables.length ? [] : tablesFromText(text);
-    const all = [...tables, ...fromText];
-    if (!all.length) {
-      setPasteNote('لم نجد جدولًا في النص الملصق. في مدرستي اضغط مطولًا داخل الجدول ثم «تحديد الكل» و«نسخ»، والصق هنا.');
-      return;
-    }
-    const ok = onPaste({ v: 1, source: 'paste', tables: all });
-    setPasteNote(ok ? '' : 'وجدنا جدولًا لكن لم نتعرف على أيامه وحصصه. تأكد أنك نسخت صفحة الجدول الدراسي.');
-    if (ok) setPasted('');
-  };
-  const linkRef = useRef<HTMLAnchorElement>(null);
-  const appUrl = typeof window !== 'undefined' ? new URL(import.meta.env.BASE_URL, window.location.origin).href : '/';
-  const code = bookmarkletSource(appUrl);
-  // React refuses javascript: hrefs; the bookmarklet link is set on the element directly.
-  useEffect(() => {
-    linkRef.current?.setAttribute('href', code);
-  }, [code]);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 3000);
-    } catch {
-      window.prompt('انسخ هذا الرابط:', code);
-    }
-  };
-  return (
-    <details className="mt-4 border-t border-line pt-4">
-      <summary className="cursor-pointer text-sm font-bold text-primary">تصدير الجدول من منصة مدرستي مباشرة</summary>
-      <p className="mt-2 text-xs leading-6 text-muted">
-        أضف زر «جدولي» إلى مفضلة متصفحك مرة واحدة. بعدها افتح مدرستي على جوالك كالمعتاد، ادخل على صفحة جدولك، ثم اضغط الزر من المفضلة فينتقل الجدول إلى هنا فورًا. الزر يعمل داخل جلستك أنت، ولا يطلب بيانات دخولك ولا يرسل شيئًا إلى أي خادم.
-      </p>
-      <ol className="mt-2 list-decimal space-y-1 pe-5 text-xs leading-6 text-muted">
-        <li>
-          اضغط <button type="button" className="font-bold text-primary underline" onClick={copy}>{copied ? 'تم النسخ ✓' : 'نسخ رابط زر جدولي'}</button>.
-        </li>
-        <li>في متصفح الجوال أضف هذه الصفحة إلى المفضلة (الإشارات المرجعية).</li>
-        <li>افتح المفضلة، حرّر الإشارة الجديدة، سمّها «جدولي»، وامسح عنوانها والصق الرابط الذي نسخته مكانه، ثم احفظ.</li>
-        <li>ادخل مدرستي وافتح صفحة الجدول الدراسي، ثم افتح المفضلة واضغط «جدولي».</li>
-        <li>في كروم على أندرويد لا يعمل الزر من قائمة المفضلة؛ بدلًا من ذلك اكتب «جدولي» في شريط العنوان وأنت في صفحة الجدول واختر الإشارة من الاقتراحات.</li>
-      </ol>
-      <div className="mt-4 rounded-xl border border-line bg-surface p-3">
-        <p className="text-xs font-bold">طريقة أبسط: انسخ الجدول والصقه هنا</p>
-        <p className="mt-1 text-xs leading-6 text-muted">في صفحة الجدول بمدرستي: اضغط مطولًا على النص ← «تحديد الكل» ← «نسخ». ثم الصق في المربع التالي.</p>
-        <textarea
-          id="madrasati-paste"
-          className="field mt-2 min-h-24 text-sm"
-          placeholder="الصق هنا نص صفحة الجدول"
-          value={pasted}
-          onChange={(e) => setPasted(e.target.value)}
-          onPaste={(e) => {
-            const html = e.clipboardData.getData('text/html');
-            const text = e.clipboardData.getData('text/plain');
-            if (html || text) {
-              e.preventDefault();
-              importText(html, text);
-            }
-          }}
-        />
-        {pasted.trim() && (
-          <button type="button" className="btn-secondary mt-2 min-h-10 w-full text-sm" onClick={() => importText('', pasted)}>
-            استيراد النص الملصق
-          </button>
-        )}
-        {pasteNote && (
-          <p className="mt-2 text-xs leading-6 text-danger" role="alert">
-            {pasteNote}
-          </p>
-        )}
-      </div>
-      <a ref={linkRef} id="jadwali-bookmarklet" className="mt-3 hidden text-xs font-bold text-primary md:inline-block" onClick={(e) => e.preventDefault()} title="اسحب هذا الرابط إلى شريط المفضلة">
-        على الكمبيوتر: اسحب هذا الرابط إلى شريط المفضلة → جدولي
-      </a>
-    </details>
   );
 }
