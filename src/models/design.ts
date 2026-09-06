@@ -6,7 +6,7 @@ import { normalizeArabic, toArabicDigits } from '../engine/parse/normalize';
 
 export const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 export const ORDINALS = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة', 'الحادية عشرة', 'الثانية عشرة'];
-export const PALETTE = ['#d9ebe1', '#e1e7f9', '#f6e7c9', '#f0dfe8', '#daf0f2', '#eadffc', '#f4dfd4', '#e7edcf', '#dce7ed', '#eddfd8'];
+export const PALETTE = ['#8fd3ad', '#93b4f2', '#f6c65a', '#f29bbd', '#7fd0d6', '#c3a4f0', '#f5a07f', '#c9dd6e', '#86bde6', '#e2b58f'];
 
 export const arabic = toArabicDigits;
 

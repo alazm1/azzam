@@ -12,7 +12,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon.svg', 'fonts/*.ttf'],
+      includeAssets: ['icons/icon.svg', 'fonts/*.woff2'],
       manifest: {
         name: 'جدول المعلم',
         short_name: 'جدول المعلم',
@@ -32,7 +32,7 @@ export default defineConfig({
       },
       workbox: {
         // The OCR core and language data are large; cache them lazily at runtime.
-        globPatterns: ['**/*.{js,css,html,svg,png,ttf,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['tesseract/**', 'tessdata/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [

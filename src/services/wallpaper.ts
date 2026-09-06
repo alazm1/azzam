@@ -20,7 +20,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
   paper: { bg: '#ffffff', ink: '#203d34', muted: '#758579', line: '#dae4de', empty: '#f1f5f2', bar: '#233f35', barText: '#ffffff' },
 };
 
-const FONT = "'Cairo', Tahoma, Arial, sans-serif";
+const FONT = "'Thmanyah', Tahoma, Arial, sans-serif";
 
 function round(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string) {
   ctx.beginPath();
@@ -158,11 +158,11 @@ export function drawSchedule(canvas: HTMLCanvasElement, state: DesignState): Dra
   return { width: W, height: H, count, classes };
 }
 
-/** Makes sure the Cairo faces are available to the canvas before drawing. */
+/** Makes sure the Thmanyah faces are available to the canvas before drawing. */
 export async function ensureFonts(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return;
   try {
-    await Promise.all([document.fonts.load("700 40px 'Cairo'"), document.fonts.load("400 40px 'Cairo'")]);
+    await Promise.all([document.fonts.load("700 40px 'Thmanyah'"), document.fonts.load("400 40px 'Thmanyah'")]);
   } catch {
     // fall back to system fonts
   }
