@@ -121,6 +121,7 @@ function emptyStats(started: number): ExtractionResult['stats'] {
     rotationApplied: 0,
     gridMethod: 'lines',
     perspectiveCorrected: false,
+    textHeightPx: 0,
   };
 }
 

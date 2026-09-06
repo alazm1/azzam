@@ -26,6 +26,9 @@ export interface DebugInfo {
   reads: CellRead[];
 }
 
+/** Text line heights observed while cutting cells (median → resolution hint for the user). */
+const observedLineHeights: number[] = [];
+
 const STAGE_MESSAGES = {
   preprocess: 'تجهيز الصورة وتصحيح الميل…',
   detect: 'اكتشاف بنية الجدول…',
@@ -197,6 +200,7 @@ export function prepareCellLines(gray: GrayImage, textInk: BinaryImage, cell: Ce
     const scale = Math.max(1, Math.min(6, 42 / inkHeight));
     if (scale > 1.05) crop = resizeGray(crop, crop.width * scale, crop.height * scale);
     if (scale > 1.3) crop = unsharp(crop);
+    observedLineHeights.push(inkHeight);
     out.push({ image: padGray(crop, 24, 255), inkHeight, originX: rect.x, scale, pad: 24 });
   }
   return out;
@@ -353,6 +357,12 @@ async function runPass(
   return { parse, grid: det.grid, reads, gray, rotation };
 }
 
+function medianOf(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 function emptyParse(): ParseOutput {
   return { orientation: 'days-in-rows', days: [], periods: [], lessons: [], cells: [], warnings: [], daysRead: 0, periodsRead: 0, score: 0 };
 }
@@ -368,6 +378,7 @@ function passIsGood(p: ParseOutput): boolean {
  */
 export async function extractSchedule(raster: Raster, options: ExtractOptions): Promise<ExtractionResult & { debug?: DebugInfo }> {
   const started = Date.now();
+  observedLineHeights.length = 0;
   const onProgress = options.onProgress ?? (() => {});
   onProgress({ stage: 'preprocess', progress: 0.02, message: STAGE_MESSAGES.preprocess });
   await options.ocr.init();
@@ -420,6 +431,7 @@ export async function extractSchedule(raster: Raster, options: ExtractOptions): 
       rotationApplied: best.rotation,
       gridMethod: grid?.method ?? 'lines',
       perspectiveCorrected: pre.perspectiveCorrected,
+      textHeightPx: medianOf(observedLineHeights) / (pre.scale || 1),
     },
   };
   if (options.debug) result.debug = { gray: best.gray, grid, reads };

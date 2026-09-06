@@ -133,6 +133,8 @@ export interface ExtractionStats {
   rotationApplied: 0 | 90 | 180 | 270;
   gridMethod: GridMethod;
   perspectiveCorrected: boolean;
+  /** Median height of a text line inside the cells, in pixels of the working image. */
+  textHeightPx: number;
 }
 
 export interface ExtractionResult {

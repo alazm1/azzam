@@ -35,6 +35,9 @@ export function mergeResults(outcomes: ImageOutcome[]): { grid: Grid; info: Merg
   const warnings = new Set<string>();
   for (const o of successes) {
     for (const w of o.result.warnings) warnings.add(w);
+    if (o.result.stats.textHeightPx > 0 && o.result.stats.textHeightPx < 13) {
+      warnings.add('الصورة صغيرة الدقة (النص أقل من ١٣ بكسل)؛ للحصول على قراءة أدق كبّر الجدول قبل لقطة الشاشة أو صوّره بالوضع الأفقي، ويمكنك رفع لقطتين لنصفي الجدول معًا');
+    }
     for (const d of o.result.days) if (DAY_INDEX[d] < 5) days.add(DAY_INDEX[d]);
     for (const p of o.result.periods) periods.add(p);
     for (const l of o.result.lessons) {
