@@ -45,7 +45,7 @@ export interface CellBox extends Rect {
   colSpan: number;
 }
 
-export type GridMethod = 'lines' | 'projection';
+export type GridMethod = 'lines' | 'projection' | 'boxes';
 
 export interface Grid {
   rows: number;
@@ -61,6 +61,8 @@ export interface Grid {
 export interface OcrWord {
   text: string;
   confidence: number; // 0..100
+  /** Bounding box in the coordinates of the image given to the OCR (optional). */
+  bbox?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 export interface OcrResult {
@@ -73,6 +75,8 @@ export interface OcrResult {
 export interface CellRead extends CellBox {
   text: string;
   ocrConfidence: number; // 0..100
+  /** Words with their horizontal position in working-image coordinates (when available). */
+  words?: Array<{ text: string; x0: number; x1: number; confidence: number }>;
 }
 
 export type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
@@ -94,6 +98,8 @@ export interface ParsedCell {
   className?: string;
   subject?: string;
   room?: string;
+  /** Clock time found in the cell (minutes since midnight), used to order periods. */
+  timeMinutes?: number;
 }
 
 export type Orientation = 'days-in-rows' | 'days-in-columns';

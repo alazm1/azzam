@@ -1,0 +1,156 @@
+{
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "٢/٤",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 2,
+      "className": "٢/١",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "٢/٣",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 5,
+      "className": "٢/٢",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "sun",
+      "period": 6,
+      "className": "٢/٥",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "٢/٢",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "٢/٥",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 4,
+      "className": "٢/١",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "٢/٤",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "mon",
+      "period": 6,
+      "className": "٢/٣",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 1,
+      "className": "٢/٣",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "٢/٤",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "٢/٥",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 5,
+      "className": "٢/٢",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "tue",
+      "period": 6,
+      "className": "٢/١",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 1,
+      "className": "٢/٤",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 2,
+      "className": "٢/١",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "٢/٣",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 5,
+      "className": "٢/٥",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "wed",
+      "period": 6,
+      "className": "٢/٢",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 1,
+      "className": "٢/٥",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 2,
+      "className": "٢/٣",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "٢/١",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 5,
+      "className": "٢/٢",
+      "subject": "رياضيات"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "٢/٤",
+      "subject": "رياضيات"
+    }
+  ],
+  "name": "11-screenshot-latin-digits"
+}

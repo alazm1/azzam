@@ -8,7 +8,7 @@ const res = await extractSchedule(loadRaster(join(FIXTURES, process.argv[2])), {
 const { reads, grid } = res.debug!;
 for (const r of reads) {
   const c = classifyCell(r);
-  if (c.kind !== 'empty') console.log(`[${r.row},${r.col}] ${c.kind} day=${c.day ?? ''} period=${c.period ?? ''} cls=${c.className ?? ''} subj=${c.subject ?? ''} raw="${r.text.replace(/\n/g, '⏎')}"`);
+  if (c.kind !== 'empty') console.log(`[${r.row},${r.col}]${r.rowSpan > 1 || r.colSpan > 1 ? ` span ${r.rowSpan}x${r.colSpan}` : ''} ${c.kind} day=${c.day ?? ''} period=${c.period ?? ''} cls=${c.className ?? ''} subj=${c.subject ?? ''} raw="${r.text.replace(/\n/g, '⏎')}"`);
 }
 const p = parseSchedule(reads, grid!);
 console.log('orientation', p.orientation, 'days', p.days, 'periods', p.periods, 'daysRead', p.daysRead, 'periodsRead', p.periodsRead, 'score', p.score);

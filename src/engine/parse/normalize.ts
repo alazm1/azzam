@@ -28,7 +28,8 @@ export function normalizeArabic(input: string): string {
   s = s.replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
   s = s.replace(/[\\⁄∕∕⁄]/g, '/');
   s = s.replace(/[–—−ـ]/g, '-');
-  s = s.replace(/[،,؛;:.·•|_'"“”«»()[\]{}<>«»?!؟*+=~^`]/g, ' ');
+  // ':' and '.' are kept: they carry time patterns (07:16, 10.00) that the parser strips later.
+  s = s.replace(/[،,؛;·•|_'"“”«»()[\]{}<>«»?!؟*+=~^`]/g, ' ');
   s = s.replace(/[^\S\n]+/g, ' ');
   s = s
     .split('\n')
@@ -47,5 +48,8 @@ export function hasContent(s: string): boolean {
 }
 
 export function tokens(s: string): string[] {
-  return s.split(/[\s/-]+/).filter(Boolean);
+  return s
+    .split(/[\s/-]+/)
+    .map((t) => t.replace(/^[.:،؛]+|[.:،؛]+$/g, ''))
+    .filter(Boolean);
 }

@@ -6,7 +6,7 @@ import { recognizeShortLabel } from '../src/engine/ocr/glyphClassifier';
 import { loadRaster, FIXTURES, ROOT, savePng } from '../tests/helpers/node';
 const [name, r, c] = process.argv.slice(2);
 const pre = preprocess(loadRaster(join(FIXTURES, name)));
-const det = detectGrid(pre.binary);
+const det = detectGrid(pre.binary, {}, pre.lineBinary);
 const cell = det.grid!.cells.find((x) => x.row === Number(r) && x.col === Number(c))!;
 console.log('cell', JSON.stringify(cell));
 const dim = Math.max(pre.gray.width, pre.gray.height);

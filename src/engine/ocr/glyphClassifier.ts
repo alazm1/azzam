@@ -95,11 +95,34 @@ function groupComponents(comps: Group[]): Group[] {
   return groups;
 }
 
-/** Splits a wide group at the column with the least ink (right part first). */
-function splitAtValley(bin: BinaryImage, g: Group): Group[] | null {
+/** Tight bounding group of the ink inside [x0, x1] of g (null when empty). */
+function tightGroup(bin: BinaryImage, g: Group, x0: number, x1: number): Group | null {
+  let y0 = g.y1;
+  let y1 = g.y0;
+  let tx0 = x1;
+  let tx1 = x0;
+  let area = 0;
+  for (let y = g.y0; y <= g.y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (!bin.data[y * bin.width + x]) continue;
+      area++;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      if (x < tx0) tx0 = x;
+      if (x > tx1) tx1 = x;
+    }
+  }
+  return area < 3 ? null : { x0: tx0, y0, x1: tx1, y1, area, parts: [] };
+}
+
+/**
+ * Splits a wide group at its thinnest columns (touching glyphs in blurry or
+ * tightly kerned text). Returns the 2-piece and 3-piece splits, right part first.
+ */
+function splitAtValleys(bin: BinaryImage, g: Group): Group[][] {
   const w = g.x1 - g.x0 + 1;
   const h = g.y1 - g.y0 + 1;
-  if (w < 8 || w / h < 0.8) return null;
+  if (w < 8 || w / h < 0.8) return [];
   const proj: number[] = [];
   for (let x = g.x0; x <= g.x1; x++) {
     let n = 0;
@@ -107,37 +130,100 @@ function splitAtValley(bin: BinaryImage, g: Group): Group[] | null {
     proj.push(n);
   }
   const mean = proj.reduce((a, b) => a + b, 0) / proj.length;
-  let best = -1;
-  let bestVal = Infinity;
-  for (let i = Math.floor(w * 0.25); i <= Math.ceil(w * 0.75); i++) {
-    if (proj[i] < bestVal) {
-      bestVal = proj[i];
-      best = i;
+  // local minima that are much thinner than the average stroke mass
+  const minSep = Math.max(4, Math.round(w * 0.15));
+  const candidates: Array<{ i: number; v: number }> = [];
+  for (let i = Math.floor(w * 0.12); i <= Math.ceil(w * 0.88); i++) {
+    if (proj[i] <= mean * 0.45 && proj[i] <= proj[i - 1] && proj[i] <= proj[i + 1]) candidates.push({ i, v: proj[i] });
+  }
+  candidates.sort((a, b) => a.v - b.v);
+  const chosen: number[] = [];
+  for (const c of candidates) {
+    if (chosen.every((k) => Math.abs(k - c.i) >= minSep)) chosen.push(c.i);
+    if (chosen.length === 3) break;
+  }
+  if (!chosen.length) return [];
+  const cut = (cols: number[]): Group[] | null => {
+    const sorted = [...cols].sort((a, b) => a - b);
+    const bounds = [g.x0 - 1, ...sorted.map((c) => g.x0 + c), g.x1 + 1];
+    const pieces: Group[] = [];
+    for (let k = 0; k + 1 < bounds.length; k++) {
+      const piece = tightGroup(bin, g, bounds[k] + 1, bounds[k + 1] - 1);
+      if (!piece) return null;
+      pieces.push(piece);
+    }
+    return pieces.sort((a, b) => b.x0 - a.x0);
+  };
+  const out: Group[][] = [];
+  const two = cut([chosen[0]]);
+  if (two) out.push(two);
+  if (chosen.length >= 2) {
+    const three = cut(chosen.slice(0, 2));
+    if (three) out.push(three);
+  }
+  if (chosen.length >= 3) {
+    const four = cut(chosen.slice(0, 3));
+    if (four) out.push(four);
+  }
+  return out;
+}
+
+/**
+ * Brute-force split of a wide group into 2 or 3 pieces, keeping the cuts whose
+ * pieces classify best (used for touching glyphs such as "٣/د" where the
+ * joining stroke is as thick as the glyphs themselves).
+ */
+function searchSplits(bin: BinaryImage, g: Group, classify: (g: Group) => { symbol: string; score: number }): Group[][] {
+  const w = g.x1 - g.x0 + 1;
+  if (w < 12) return [];
+  const proj: number[] = [];
+  for (let x = g.x0; x <= g.x1; x++) {
+    let n = 0;
+    for (let y = g.y0; y <= g.y1; y++) n += bin.data[y * bin.width + x];
+    proj.push(n);
+  }
+  const mean = proj.reduce((a, b) => a + b, 0) / proj.length;
+  const cuts: number[] = [];
+  for (let i = Math.floor(w * 0.12); i <= Math.ceil(w * 0.88); i += 2) if (proj[i] <= mean * 0.85) cuts.push(i);
+  if (!cuts.length) return [];
+  const cache = new Map<string, { symbol: string; score: number } | null>();
+  const piece = (a: number, b: number) => {
+    const key = `${a}:${b}`;
+    if (!cache.has(key)) {
+      const grp = tightGroup(bin, g, a, b);
+      cache.set(key, grp ? { ...classify(grp), ...({ grp } as object) } : null);
+    }
+    return cache.get(key) as ({ symbol: string; score: number; grp: Group } | null);
+  };
+  const evaluate = (bounds: number[]) => {
+    const pieces: Group[] = [];
+    let sum = 0;
+    let min = 1;
+    for (let k = 0; k + 1 < bounds.length; k++) {
+      const pc = piece(bounds[k] + 1, bounds[k + 1] - 1);
+      if (!pc) return null;
+      pieces.push(pc.grp);
+      sum += pc.score;
+      min = Math.min(min, pc.score);
+    }
+    return { pieces: pieces.sort((a, b) => b.x0 - a.x0), score: (sum / pieces.length) * 0.7 + min * 0.3 };
+  };
+  let best2: { pieces: Group[]; score: number } | null = null;
+  let best3: { pieces: Group[]; score: number } | null = null;
+  const minSep = Math.max(5, Math.round(w * 0.12));
+  for (let i = 0; i < cuts.length; i++) {
+    const r2 = evaluate([g.x0 - 1, g.x0 + cuts[i], g.x1 + 1]);
+    if (r2 && (!best2 || r2.score > best2.score)) best2 = r2;
+    for (let j = i + 1; j < cuts.length; j++) {
+      if (cuts[j] - cuts[i] < minSep) continue;
+      const r3 = evaluate([g.x0 - 1, g.x0 + cuts[i], g.x0 + cuts[j], g.x1 + 1]);
+      if (r3 && (!best3 || r3.score > best3.score)) best3 = r3;
     }
   }
-  if (best < 0 || bestVal > mean * 0.4) return null;
-  const tight = (x0: number, x1: number): Group | null => {
-    let y0 = g.y1;
-    let y1 = g.y0;
-    let tx0 = x1;
-    let tx1 = x0;
-    let area = 0;
-    for (let y = g.y0; y <= g.y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        if (!bin.data[y * bin.width + x]) continue;
-        area++;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-        if (x < tx0) tx0 = x;
-        if (x > tx1) tx1 = x;
-      }
-    }
-    return area < 3 ? null : { x0: tx0, y0, x1: tx1, y1, area, parts: [] };
-  };
-  const right = tight(g.x0 + best + 1, g.x1);
-  const left = tight(g.x0, g.x0 + best - 1);
-  if (!right || !left) return null;
-  return [right, left];
+  const out: Group[][] = [];
+  if (best2) out.push(best2.pieces);
+  if (best3) out.push(best3.pieces);
+  return out;
 }
 
 /**
@@ -174,7 +260,18 @@ function sampleGlyph(bin: BinaryImage, g: Group): Float32Array {
   return out;
 }
 
-function matchGlyph(sample: Float32Array, aspect: number): { symbol: string; score: number } {
+/**
+ * Size prior: a dot must be small, a slash must be tall, a dash must be flat,
+ * and real digits/letters take up a good part of the line height.
+ */
+function sizePrior(symbol: string, relHeight: number): number {
+  if (symbol === '٠') return relHeight <= 0.45 ? 1 : 0.55;
+  if (symbol === '/') return relHeight >= 0.55 ? 1 : 0.7;
+  if (symbol === '-') return relHeight <= 0.35 ? 1 : 0.5;
+  return relHeight >= 0.4 ? 1 : 0.75;
+}
+
+function matchGlyph(sample: Float32Array, aspect: number, relHeight = 1): { symbol: string; score: number } {
   let sampleNorm = 0;
   for (let i = 0; i < sample.length; i++) sampleNorm += sample[i] * sample[i];
   let best = { symbol: '?', score: 0 };
@@ -183,7 +280,7 @@ function matchGlyph(sample: Float32Array, aspect: number): { symbol: string; sco
     for (let i = 0; i < sample.length; i++) dot += sample[i] * t.data[i];
     const dice = (2 * dot) / (sampleNorm + t.norm + 1e-6);
     const r = Math.min(aspect, t.aspect) / Math.max(aspect, t.aspect);
-    const score = dice * (0.55 + 0.45 * r);
+    const score = dice * (0.55 + 0.45 * r) * sizePrior(t.symbol, relHeight);
     if (score > best.score) best = { symbol: t.symbol, score };
   }
   return best;
@@ -202,7 +299,10 @@ function digitsToAscii(t: string): string {
   return t.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
 }
 
-/** Numbers are written left-to-right even inside RTL text: restore digit runs. */
+/**
+ * Numbers are written left-to-right even inside RTL text: restore digit runs.
+ * A separator between two digits ("2/4") belongs to the same LTR run.
+ */
 function restoreOrder(chars: string[]): string {
   const restored: string[] = [];
   let run: string[] = [];
@@ -210,8 +310,10 @@ function restoreOrder(chars: string[]): string {
     if (run.length) restored.push(...run.reverse());
     run = [];
   };
-  for (const ch of chars) {
-    if (DIGIT.test(ch)) run.push(ch);
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    const sepInsideNumber = (ch === '/' || ch === '-') && run.length > 0 && i + 1 < chars.length && DIGIT.test(chars[i + 1]);
+    if (DIGIT.test(ch) || sepInsideNumber) run.push(ch);
     else {
       flush();
       restored.push(ch);
@@ -241,13 +343,16 @@ export function recognizeShortLabel(crop: GrayImage, maxGlyphs = 6): ShortLabelR
   if (groups.length > maxGlyphs) return null;
   // Read right-to-left (visual order of Arabic).
   groups.sort((a, b) => b.x0 - a.x0);
+  const lineHeightAll = Math.max(...groups.map((g) => g.y1 - g.y0 + 1));
   const cache = new Map<Group, { symbol: string; score: number }>();
   const classify = (g: Group) => {
     let m = cache.get(g);
     if (!m) {
       const sample = sampleGlyph(bin, g);
       const aspect = (g.x1 - g.x0 + 1) / (g.y1 - g.y0 + 1);
-      m = matchGlyph(sample, aspect);
+      m = matchGlyph(sample, aspect, (g.y1 - g.y0 + 1) / lineHeightAll);
+      // A vertical stroke with a detached mark above/below it is an alef with hamza, not a one.
+      if (g.parts.length >= 2 && ['١', '1', 'ا', '|'].includes(m.symbol)) m = { symbol: 'أ', score: m.score };
       cache.set(g, m);
     }
     return m;
@@ -258,11 +363,13 @@ export function recognizeShortLabel(crop: GrayImage, maxGlyphs = 6): ShortLabelR
   const alternatives: Group[][][] = groups.map((g) => {
     const alts: Group[][] = [[g]];
     if (g.parts.length > 1 && g.parts.length <= 3) alts.push([...g.parts].sort((a, b) => b.x0 - a.x0));
-    const split = splitAtValley(bin, g);
-    if (split) alts.push(split);
+    for (const split of splitAtValleys(bin, g)) alts.push(split);
+    const wide = (g.x1 - g.x0 + 1) / (g.y1 - g.y0 + 1);
+    if (wide >= 1.15 && classify(g).score < 0.8) for (const split of searchSplits(bin, g, classify)) alts.push(split);
     return alts;
   });
   let bestChars: string[] = [];
+  let bestPieces: Group[] = [];
   let bestScore = -1;
   let bestMean = 0;
   let bestMin = 0;
@@ -279,6 +386,7 @@ export function recognizeShortLabel(crop: GrayImage, maxGlyphs = 6): ShortLabelR
       if (total > bestScore) {
         bestScore = total;
         bestChars = chars;
+        bestPieces = pieces;
         bestMean = mean;
         bestMin = min;
       }
@@ -290,11 +398,18 @@ export function recognizeShortLabel(crop: GrayImage, maxGlyphs = 6): ShortLabelR
   const chars = bestChars;
   const scoreSum = bestMean * Math.max(1, chars.length);
   const glyphCount = Math.max(1, chars.length);
+  // A "dash" as tall as the text line is a whole word, not a separator: leave it to the OCR.
+  // (A lone flat stroke is a genuine dash marking a free period.)
+  if (bestPieces.length > 1) {
+    const lineHeight = Math.max(...bestPieces.map((g) => g.y1 - g.y0 + 1));
+    if (bestPieces.some((g, i) => chars[i] === '-' && g.y1 - g.y0 + 1 > lineHeight * 0.45)) return null;
+  } else if (chars[0] === '-' && (bestPieces[0].x1 - bestPieces[0].x0 + 1) / (bestPieces[0].y1 - bestPieces[0].y0 + 1) < 2.5) {
+    return null;
+  }
   const restored = [...restoreOrder(chars)];
   // Contextual disambiguation for "digit / letter" patterns.
   if (restored.length === 3 && (restored[1] === '/' || restored[1] === '-')) {
     if (restored[0] === 'ا' || restored[0] === 'أ' || restored[0] === '|') restored[0] = '١';
-    if (restored[2] === '١' || restored[2] === '1') restored[2] = 'ا';
   }
   const text = restored.join('');
   // Separator-only ink (a dash marking a free period) → empty label.

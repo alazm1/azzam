@@ -1,6 +1,7 @@
 import type { BinaryImage, CellBox, Grid } from '../types';
+import { connectedComponents, type Component } from './components';
 import { lineMinLengths } from './preprocessor';
-import { colProjection, dilate, dilateAxis, horizontalLines, rowProjection, subtractBinary, unionBinary, verticalLines } from './morphology';
+import { colProjection, dilate, dilateAxis, horizontalLines, rowProjection, subtractBinary, verticalLines } from './morphology';
 
 export interface DetectOptions {
   /** Minimum row height / column width in pixels considered a real cell. */
@@ -105,6 +106,71 @@ function longestRun(mask: BinaryImage, vertical: boolean, from: number, to: numb
     }
   }
   return best;
+}
+
+/**
+ * A row (or column) that is about twice the typical size and whose ink has a
+ * clean gap where a ruling would be expected is a merged pair of rows: the
+ * faint separator was not detected, so it is restored at the gap.
+ */
+function splitTallLines(lines: number[], textInk: BinaryImage, vertical: boolean, spanFrom: number, spanTo: number): number[] {
+  if (lines.length < 3) return lines;
+  const sizes = lines.slice(1).map((v, i) => v - lines[i]);
+  const typical = median(sizes);
+  const proj = vertical
+    ? colProjection(textInk, Math.round(spanFrom), Math.round(spanTo))
+    : rowProjection(textInk, Math.round(spanFrom), Math.round(spanTo));
+  const out: number[] = [lines[0]];
+  for (let i = 0; i + 1 < lines.length; i++) {
+    const a = lines[i];
+    const b = lines[i + 1];
+    const size = b - a;
+    const n = Math.round(size / typical);
+    if (n >= 2 && size >= typical * 1.7) {
+      const part = size / n;
+      for (let k = 1; k < n; k++) {
+        const target = a + k * part;
+        const radius = part * 0.3;
+        // widest empty run around the expected position
+        let bestPos = -1;
+        let bestLen = 0;
+        let runStart = -1;
+        for (let t = Math.round(target - radius); t <= Math.round(target + radius) + 1; t++) {
+          const empty = t < proj.length && t >= 0 && proj[t] === 0;
+          if (empty && runStart < 0) runStart = t;
+          if ((!empty || t === Math.round(target + radius) + 1) && runStart >= 0) {
+            const len = t - runStart;
+            if (len > bestLen) {
+              bestLen = len;
+              bestPos = runStart + len / 2;
+            }
+            runStart = -1;
+          }
+        }
+        if (bestPos >= 0 && bestLen >= 3) out.push(bestPos);
+      }
+    }
+    out.push(b);
+  }
+  return out;
+}
+
+/** Keeps only the line pixels that lie within the bands of accepted row/column lines. */
+function maskFromClusters(hLines: BinaryImage, vLines: BinaryImage, rows: LineCluster[], cols: LineCluster[]): BinaryImage {
+  const { width: w, height: h } = hLines;
+  const out = new Uint8Array(w * h);
+  for (const c of rows) {
+    for (let y = Math.max(0, c.start - 1); y <= Math.min(h - 1, c.end + 1); y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) if (hLines.data[row + x]) out[row + x] = 1;
+    }
+  }
+  for (const c of cols) {
+    for (let x = Math.max(0, c.start - 1); x <= Math.min(w - 1, c.end + 1); x++) {
+      for (let y = 0; y < h; y++) if (vLines.data[y * w + x]) out[y * w + x] = 1;
+    }
+  }
+  return { width: w, height: h, data: out };
 }
 
 class UnionFind {
@@ -217,7 +283,14 @@ function projectionGrid(textInk: BinaryImage, minCell: number): Grid | null {
   const { width: w, height: h } = textInk;
   const thick = dilate(textInk, 1);
   const rowProj = rowProjection(thick);
-  const rowLines = segmentsFromProjection(rowProj, 1, Math.max(4, Math.round(minCell * 0.35)), Math.max(6, minCell * 0.4));
+  // First pass finds individual text lines; the typical line height then sets
+  // the gap that separates blocks (a class line and its subject line stay together).
+  const first = segmentsFromProjection(rowProj, 1, Math.max(4, Math.round(minCell * 0.35)), Math.max(6, minCell * 0.4));
+  if (first.length < 3) return null;
+  const heights: number[] = [];
+  for (let i = 0; i + 1 < first.length; i++) heights.push(first[i + 1] - first[i]);
+  const lineH = median(heights);
+  const rowLines = segmentsFromProjection(rowProj, 1, Math.max(6, Math.round(lineH * 0.55)), Math.max(6, minCell * 0.4));
   if (rowLines.length < 3) return null;
   // Columns: use a horizontally smeared image so words in the same column merge.
   const smear = horizontalSmear(thick, Math.max(6, Math.round(minCell * 0.6)));
@@ -261,17 +334,16 @@ function horizontalSmear(bin: BinaryImage, r: number): BinaryImage {
  * Stage 2 of the engine: recovers the ruling structure of the table and
  * produces a logical grid (including merged cells).
  */
-export function detectGrid(binary: BinaryImage, opts: DetectOptions = {}): DetectResult {
+export function detectGrid(binary: BinaryImage, opts: DetectOptions = {}, lineBinary: BinaryImage = binary): DetectResult {
   const { width: w, height: h } = binary;
   const dim = Math.max(w, h);
   const minCell = opts.minCellSize ?? Math.max(10, Math.round(dim * 0.012));
   const { h: hMin, v: vMin } = lineMinLengths(w, h);
   // A 1-px dilation across the run direction keeps slightly slanted lines contiguous.
-  const hLines = horizontalLines(dilateAxis(binary, 0, 1), hMin, 3);
-  const vLines = verticalLines(dilateAxis(binary, 1, 0), vMin, 3);
-  const lines = unionBinary(hLines, vLines);
-  const textInk = subtractBinary(binary, lines, 1);
-
+  // Dotted/dashed rulings (common in web exports) are bridged with a wider gap tolerance.
+  const gap = Math.max(3, Math.round(dim * 0.005));
+  const hLines = horizontalLines(dilateAxis(lineBinary, 0, 1), hMin, gap);
+  const vLines = verticalLines(dilateAxis(lineBinary, 1, 0), vMin, gap);
   const rowProj = rowProjection(hLines);
   const colProj = colProjection(vLines);
   let rowClusters = clusterPeaks(rowProj, Math.max(hMin, w * 0.15), minCell);
@@ -288,10 +360,17 @@ export function detectGrid(binary: BinaryImage, opts: DetectOptions = {}): Detec
   let rowLines = rowClusters.map((c) => c.pos);
   let colLines = colClusters.map((c) => c.pos);
 
+  // Text mask: only pixels of *validated* rulings are removed from the ink,
+  // so bold word strokes that merely look line-like are left intact for the OCR.
+  const validated = maskFromClusters(hLines, vLines, rowClusters, colClusters);
+  const textInk = subtractBinary(binary, validated, 2);
+
   if (rowLines.length >= 3 && colLines.length >= 3) {
     // Add virtual outer lines when text sits outside the outermost ruling.
     rowLines = addVirtualEdges(rowLines, textInk, false, minCell, colLines[0], colLines[colLines.length - 1]);
     colLines = addVirtualEdges(colLines, textInk, true, minCell, rowLines[0], rowLines[rowLines.length - 1]);
+    rowLines = splitTallLines(rowLines, textInk, false, colLines[0], colLines[colLines.length - 1]);
+    colLines = splitTallLines(colLines, textInk, true, rowLines[0], rowLines[rowLines.length - 1]);
     const band = Math.max(3, Math.round(minCell * 0.6));
     const cells = buildCells(rowLines, colLines, hLines, vLines, band);
     const grid: Grid = {
@@ -305,8 +384,104 @@ export function detectGrid(binary: BinaryImage, opts: DetectOptions = {}): Detec
     return { grid, hLines, vLines, textInk };
   }
 
+  const boxes = boxGrid(binary);
+  if (boxes) return { grid: boxes.grid, hLines, vLines, textInk: subtractBinary(textInk, boxes.outlines, 2) };
   const grid = projectionGrid(textInk, Math.max(minCell, 14));
   return { grid, hLines, vLines, textInk };
+}
+
+/**
+ * Fallback for "card" layouts (rounded boxes, no ruling lines): every hollow
+ * outline of a plausible cell size becomes a cell, and cells are arranged
+ * into rows/columns by clustering their centres.
+ */
+function boxGrid(binary: BinaryImage): { grid: Grid; outlines: BinaryImage } | null {
+  const { width: w, height: h } = binary;
+  const comps = connectedComponents(binary, 150);
+  const boxes = comps.filter((c) => {
+    const bw = c.x1 - c.x0 + 1;
+    const bh = c.y1 - c.y0 + 1;
+    if (bw < w * 0.025 || bh < h * 0.03 || bw > w * 0.5 || bh > h * 0.45) return false;
+    const fill = c.area / (bw * bh);
+    return fill < 0.3 && c.area >= (bw + bh) * 1.2; // an outline, not a glyph or a blob
+  });
+  if (boxes.length < 6) return null;
+  const medianW = median(boxes.map((b) => b.x1 - b.x0 + 1));
+  const medianH = median(boxes.map((b) => b.y1 - b.y0 + 1));
+  const rows = clusterCenters(boxes.map((b) => (b.y0 + b.y1) / 2), medianH * 0.6);
+  const cols = clusterCenters(boxes.map((b) => (b.x0 + b.x1) / 2), medianW * 0.5);
+  if (rows.length < 2 || cols.length < 2) return null;
+  const cells: CellBox[] = [];
+  const seen = new Set<string>();
+  for (const b of boxes) {
+    const row = nearestIndex(rows, (b.y0 + b.y1) / 2);
+    const col = nearestIndex(cols, (b.x0 + b.x1) / 2);
+    const key = `${row}:${col}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cells.push({ row, col, rowSpan: 1, colSpan: 1, x: b.x0, y: b.y0, w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 });
+  }
+  const bounds = (centers: number[], size: number) => [centers[0] - size / 2, ...centers.slice(1).map((c, i) => (c + centers[i]) / 2), centers[centers.length - 1] + size / 2];
+  cells.sort((a, b) => a.row - b.row || a.col - b.col);
+  // Mask of the outlines themselves so their arcs do not pollute the cell text.
+  const outlines = outlineMask(binary, boxes);
+  return { grid: { rows: rows.length, cols: cols.length, rowLines: bounds(rows, medianH), colLines: bounds(cols, medianW), cells, method: 'boxes' }, outlines };
+}
+
+/** Re-labels the given components' pixels into a mask (flood fill inside each bbox). */
+function outlineMask(binary: BinaryImage, boxes: Component[]): BinaryImage {
+  const { width: w, height: h } = binary;
+  const out = new Uint8Array(w * h);
+  const stack: number[] = [];
+  for (const b of boxes) {
+    // seed from the top-left-most pixel of the component
+    const seed = b.tl.y * w + b.tl.x;
+    if (!binary.data[seed] || out[seed]) continue;
+    stack.push(seed);
+    out[seed] = 1;
+    while (stack.length) {
+      const idx = stack.pop()!;
+      const x = idx % w;
+      const y = (idx - x) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy;
+        if (yy < b.y0 || yy > b.y1) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          if (xx < b.x0 || xx > b.x1) continue;
+          const n = yy * w + xx;
+          if (binary.data[n] && !out[n]) {
+            out[n] = 1;
+            stack.push(n);
+          }
+        }
+      }
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+function median(values: number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
+/** 1-D clustering of centre coordinates; returns sorted cluster means. */
+function clusterCenters(values: number[], tolerance: number): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  const clusters: number[][] = [];
+  for (const v of sorted) {
+    const last = clusters[clusters.length - 1];
+    if (last && v - last[last.length - 1] <= tolerance) last.push(v);
+    else clusters.push([v]);
+  }
+  return clusters.map((c) => c.reduce((a, b) => a + b, 0) / c.length);
+}
+
+function nearestIndex(centers: number[], v: number): number {
+  let best = 0;
+  for (let i = 1; i < centers.length; i++) if (Math.abs(centers[i] - v) < Math.abs(centers[best] - v)) best = i;
+  return best;
 }
 
 function addVirtualEdges(lines: number[], textInk: BinaryImage, vertical: boolean, minCell: number, spanFrom: number, spanTo: number): number[] {

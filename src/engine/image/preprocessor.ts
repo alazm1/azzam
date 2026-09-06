@@ -1,6 +1,6 @@
 import type { BinaryImage, GrayImage, Point, Raster, Rect } from '../types';
 import { connectedComponents } from './components';
-import { distance, warpPerspective } from './geometry';
+import { distance, rotateGrayByAngle, warpPerspective } from './geometry';
 import { dilate, erode, open } from './morphology';
 import { blur3, cropGray, downscaleGray, resizeGray, stretchContrast, toGray } from './raster';
 import { adaptiveThreshold, globalThreshold, otsuThreshold } from './threshold';
@@ -17,6 +17,8 @@ export interface PreprocessResult {
   gray: GrayImage;
   /** Ink mask of the corrected image. */
   binary: BinaryImage;
+  /** More sensitive ink mask used only to find faint (light grey, dashed) rulings. */
+  lineBinary: BinaryImage;
   /** Quadrilateral of the table in *working* (pre-warp) coordinates, if found. */
   quad: Point[] | null;
   perspectiveCorrected: boolean;
@@ -33,11 +35,11 @@ export interface PreprocessResult {
  * separator lines become regular ink, and their outline is kept as a ruling
  * line (the edge of a header bar is usually also the table border).
  */
-export function binarize(gray: GrayImage): BinaryImage {
+export function binarize(gray: GrayImage, c = 10): BinaryImage {
   const dim = Math.max(gray.width, gray.height);
   let win = Math.max(15, Math.round(dim / 40));
   if (win % 2 === 0) win += 1;
-  const dark = adaptiveThreshold(gray, win, 10);
+  const dark = adaptiveThreshold(gray, win, c);
   const r = Math.max(4, Math.round(dim * 0.004));
   const t = Math.min(otsuThreshold(gray), 150);
   const solid = open(globalThreshold(gray, t), r);
@@ -47,7 +49,7 @@ export function binarize(gray: GrayImage): BinaryImage {
   if (solidCount > 0) {
     const inverted = new Uint8Array(gray.data.length);
     for (let i = 0; i < inverted.length; i++) inverted[i] = 255 - gray.data[i];
-    const light = adaptiveThreshold({ width: gray.width, height: gray.height, data: inverted }, win, 10);
+    const light = adaptiveThreshold({ width: gray.width, height: gray.height, data: inverted }, win, c);
     const outer = dilate(solid, 2);
     const inner = erode(solid, 2);
     for (let i = 0; i < out.length; i++) {
@@ -110,14 +112,15 @@ export function findTableQuad(binary: BinaryImage, skipFullFrame = false): { qua
     const right = distance(quad[1], quad[2]);
     if (Math.min(top, bottom) / Math.max(top, bottom) < 0.6) continue;
     if (Math.min(left, right) / Math.max(left, right) < 0.6) continue;
-    const band = Math.max(2, Math.round(Math.max(w, h) * 0.003));
+    // Paper curvature and lens distortion bend long edges: allow a generous band.
+    const band = Math.max(3, Math.round(Math.max(w, h) * 0.008));
     const coverage = [
       edgeCoverage(binary, quad[0], quad[1], band),
       edgeCoverage(binary, quad[1], quad[2], band),
       edgeCoverage(binary, quad[2], quad[3], band),
       edgeCoverage(binary, quad[3], quad[0], band),
     ];
-    const framed = coverage.filter((v) => v >= 0.6).length >= 3;
+    const framed = coverage.filter((v) => v >= 0.5).length >= 3;
     return { quad, bbox: { x: c.x0, y: c.y0, w: bw, h: bh }, framed };
   }
   return null;
@@ -144,6 +147,66 @@ function quadSkewDegrees(quad: Point[]): number {
 }
 
 /**
+ * Estimates the dominant skew of the ruling/text lines (degrees, positive =
+ * clockwise) by maximising the row-projection variance over candidate angles
+ * on a downscaled copy. Returns 0 when nothing dominant is found.
+ */
+export function estimateSkew(binary: BinaryImage): number {
+  const factor = Math.max(1, Math.round(Math.max(binary.width, binary.height) / 700));
+  const w = Math.floor(binary.width / factor);
+  const h = Math.floor(binary.height / factor);
+  const small = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) small[y * w + x] = binary.data[y * factor * binary.width + x * factor];
+  const points: number[] = [];
+  for (let i = 0; i < small.length; i++) if (small[i]) points.push(i);
+  if (points.length < 200) return 0;
+  const cx = w / 2;
+  const cy = h / 2;
+  const score = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    const sin = Math.sin(rad);
+    const cos = Math.cos(rad);
+    const proj = new Float64Array(h + 2);
+    for (const i of points) {
+      const x = i % w;
+      const y = (i - x) / w;
+      const yy = Math.round(-(x - cx) * sin + (y - cy) * cos + cy);
+      if (yy >= 0 && yy < h) proj[yy]++;
+    }
+    let sum = 0;
+    let sq = 0;
+    for (let y = 0; y < h; y++) {
+      sum += proj[y];
+      sq += proj[y] * proj[y];
+    }
+    const mean = sum / h;
+    return sq / h - mean * mean;
+  };
+  let best = 0;
+  const baseScore = score(0);
+  let bestScore = baseScore;
+  for (let deg = -12; deg <= 12; deg += 1) {
+    if (deg === 0) continue;
+    const v = score(deg);
+    if (v > bestScore) {
+      bestScore = v;
+      best = deg;
+    }
+  }
+  if (best === 0) return 0;
+  // refine to 0.25°
+  for (let deg = best - 0.75; deg <= best + 0.75; deg += 0.25) {
+    const v = score(deg);
+    if (v > bestScore) {
+      bestScore = v;
+      best = deg;
+    }
+  }
+  // Only a clearly better alignment justifies resampling the whole image.
+  return bestScore >= baseScore * 1.2 && Math.abs(best) >= 1 ? best : 0;
+}
+
+/**
  * Stage 1 of the engine: normalises the input photo into a clean, upright,
  * cropped grayscale image plus its ink mask.
  */
@@ -156,9 +219,9 @@ export function preprocess(raster: Raster, opts: PreprocessOptions = {}): Prepro
     const factor = dim / maxDimension;
     gray = downscaleGray(gray, factor);
     scale = 1 / factor;
-  } else if (dim < 900) {
-    // Tiny screenshots: upscale so that lines/text have enough pixels to work with.
-    const factor = 900 / dim;
+  } else if (dim < 1700) {
+    // Small screenshots / compressed photos: upscale so text glyphs have enough pixels.
+    const factor = Math.min(2, 1700 / dim);
     gray = resizeGray(gray, gray.width * factor, gray.height * factor);
     scale = factor;
   }
@@ -169,6 +232,17 @@ export function preprocess(raster: Raster, opts: PreprocessOptions = {}): Prepro
   let quad: Point[] | null = null;
   let perspectiveCorrected = false;
   let skewDegrees = 0;
+
+  if (opts.correctPerspective !== false) {
+    // Global deskew first: photos are rarely perfectly straight, and the line
+    // detector wants near-horizontal rulings.
+    const skew = estimateSkew(binary);
+    if (Math.abs(skew) >= 0.75) {
+      gray = rotateGrayByAngle(gray, -skew);
+      binary = binarize(gray);
+      skewDegrees = skew;
+    }
+  }
 
   if (opts.correctPerspective !== false) {
     for (let iteration = 0; iteration < 2; iteration++) {
@@ -184,9 +258,15 @@ export function preprocess(raster: Raster, opts: PreprocessOptions = {}): Prepro
       const maxDev = Math.max(...found.quad.map((p, i) => distance(p, corners[i])));
       const tolerance = Math.max(4, Math.max(gray.width, gray.height) * 0.006);
       const margin = Math.max(10, Math.round(Math.max(bbox.w, bbox.h) * 0.015));
-      if (maxDev > tolerance && found.framed && !perspectiveCorrected) {
+      const quadSkew = Math.abs(quadSkewDegrees(found.quad));
+      const top = distance(found.quad[0], found.quad[1]);
+      const bottom = distance(found.quad[3], found.quad[2]);
+      const left = distance(found.quad[0], found.quad[3]);
+      const right = distance(found.quad[1], found.quad[2]);
+      const trapezoid = Math.abs(top - bottom) / Math.max(top, bottom) >= 0.02 || Math.abs(left - right) / Math.max(left, right) >= 0.02;
+      if (maxDev > tolerance && found.framed && !perspectiveCorrected && (quadSkew >= 0.8 || trapezoid)) {
         quad = found.quad;
-        skewDegrees = quadSkewDegrees(quad);
+        skewDegrees += quadSkewDegrees(quad);
         const expanded = expandQuad(quad, margin, gray.width, gray.height);
         const outW = Math.round(Math.max(distance(expanded[0], expanded[1]), distance(expanded[3], expanded[2])));
         const outH = Math.round(Math.max(distance(expanded[0], expanded[3]), distance(expanded[1], expanded[2])));
@@ -208,5 +288,5 @@ export function preprocess(raster: Raster, opts: PreprocessOptions = {}): Prepro
     }
   }
 
-  return { gray, binary, quad, perspectiveCorrected, skewDegrees, scale };
+  return { gray, binary, lineBinary: binarize(gray, 5), quad, perspectiveCorrected, skewDegrees, scale };
 }

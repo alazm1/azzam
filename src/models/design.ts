@@ -71,8 +71,8 @@ export function defaultState(): DesignState {
 /** Key used to give the same class the same colour whatever its spelling. */
 export function classKey(v: string): string {
   return normalizeArabic(v || '')
-    .replace(/\s*([/|\-–])\s*/g, '/')
     .replace(/هـ/g, 'ه')
+    .replace(/\s*([/|\\\-–])+\s*/g, '/')
     .replace(/\s+/g, ' ')
     .trim();
 }

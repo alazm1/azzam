@@ -1,6 +1,8 @@
 import type { CellRead, DayKey, ExtractedLesson, Grid, Orientation, ParsedCell } from '../types';
 import { ALL_DAYS, SCHOOL_DAYS } from '../types';
-import { classifyCell } from './classify';
+import { classifyCell, matchDay, matchPeriod } from './classify';
+import { normalizeArabic } from './normalize';
+import { DAY_NAMES_AR } from './lexicon';
 
 export interface ParseOutput {
   orientation: Orientation;
@@ -30,6 +32,11 @@ interface AxisAssignment {
 
 const dayIndex = (d: DayKey) => ALL_DAYS.indexOf(d);
 
+function median(values: number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+}
+
 /** Builds a lookup of which parsed cell covers each (row, col). */
 function buildOccupancy(cells: ParsedCell[], grid: Grid): (ParsedCell | undefined)[][] {
   const occ: (ParsedCell | undefined)[][] = Array.from({ length: grid.rows }, () => new Array(grid.cols).fill(undefined));
@@ -39,6 +46,81 @@ function buildOccupancy(cells: ParsedCell[], grid: Grid): (ParsedCell | undefine
     }
   }
   return occ;
+}
+
+/**
+ * A day cell that spans several rows/columns and lists several day names
+ * (its separators were too faint to detect) is split into one cell per day.
+ */
+function splitMultiDayCell(read: CellRead, grid: Grid): CellRead[] {
+  const span = Math.max(read.rowSpan, read.colSpan);
+  if (span < 2 || !read.text.includes('\n')) return [read];
+  const lines = read.text.split('\n').map((l) => l.trim()).filter(Boolean);
+  const dayLines = lines.map((l) => ({ l, day: matchDay(normalizeArabic(l)) })).filter((x) => x.day && x.day.score >= 0.7);
+  const distinct = new Set(dayLines.map((x) => x.day!.day));
+  if (dayLines.length < 2 || distinct.size < 2 || dayLines.length > span) return [read];
+  const vertical = read.rowSpan >= read.colSpan;
+  const stops = vertical ? grid.rowLines : grid.colLines;
+  const start = vertical ? read.row : read.col;
+  // Merged day cells hold consecutive days; when the OCR skipped one, the
+  // names are non-consecutive and the sequence is rebuilt from the first day
+  // over the whole span (e.g. 4 rows starting Sunday → Sun, Mon, Tue, Wed).
+  const firstIdx = dayIndex(dayLines[0].day!.day);
+  const consecutive = dayLines.every((x, i) => dayIndex(x.day!.day) === firstIdx + i);
+  const fitsSpan = firstIdx + span - 1 <= dayIndex('thu');
+  const rebuilt = !consecutive || dayLines.length !== span;
+  const count = rebuilt && fitsSpan ? span : dayLines.length;
+  const names = rebuilt && fitsSpan ? Array.from({ length: span }, (_, i) => DAY_NAMES_AR[ALL_DAYS[firstIdx + i]]) : dayLines.map((x) => x.l);
+  const perRow = span / count;
+  return names.map((name, i) => {
+    const from = start + Math.round(i * perRow);
+    const to = start + Math.round((i + 1) * perRow);
+    const coord = stops[from];
+    const size = stops[to] - stops[from];
+    return {
+      ...read,
+      text: name,
+      words: undefined,
+      ...(vertical ? { row: from, rowSpan: to - from, y: coord, h: size } : { col: from, colSpan: to - from, x: coord, w: size }),
+    };
+  });
+}
+
+/**
+ * A merged cell whose OCR words fall into several underlying columns (or rows)
+ * and read as separate labels (periods, days, times) is split back into its
+ * sub-cells — the separators between header cells are often too faint.
+ */
+function splitMergedLabels(read: CellRead, grid: Grid): CellRead[] {
+  if (read.colSpan < 2 || !read.words || read.words.length < 2) return [read];
+  const groups: Array<{ text: string[]; conf: number[] }> = Array.from({ length: read.colSpan }, () => ({ text: [], conf: [] }));
+  for (const w of read.words) {
+    const cx = (w.x0 + w.x1) / 2;
+    let col = -1;
+    for (let c = read.col; c < read.col + read.colSpan; c++) if (cx >= grid.colLines[c] && cx < grid.colLines[c + 1]) col = c - read.col;
+    if (col < 0) continue;
+    groups[col].text.push(w.text);
+    groups[col].conf.push(w.confidence);
+  }
+  const labelled = groups.filter((g) => {
+    const norm = normalizeArabic(g.text.join(' '));
+    return !!(matchPeriod(norm) || matchDay(norm) || /\d{1,2}[:.]\d{2}/.test(norm));
+  });
+  if (labelled.length < 2) return [read];
+  return groups.map((g, i) => {
+    const c = read.col + i;
+    // RTL reading order inside a sub-cell: words are already in logical order from the OCR
+    return {
+      ...read,
+      col: c,
+      colSpan: 1,
+      x: grid.colLines[c],
+      w: grid.colLines[c + 1] - grid.colLines[c],
+      text: g.text.join(' '),
+      ocrConfidence: g.conf.length ? g.conf.reduce((a, b) => a + b, 0) / g.conf.length : 0,
+      words: undefined,
+    };
+  });
 }
 
 function distinctDaysInLine(line: (ParsedCell | undefined)[]): number {
@@ -169,6 +251,30 @@ function assignAxes(occ: (ParsedCell | undefined)[][], grid: Grid, orientation: 
       }
     }
   }
+  // Period labels that were not read but carry a clock time ("06:30 ص") are
+  // ordered by time: the earliest is period 1 (or continues the read numbering).
+  if (periodLine >= 0 && knownPeriods.size < periodPositions.length) {
+    const line = getPeriodLine(periodLine);
+    const timed: Array<{ pos: number; t: number }> = [];
+    for (let p = 0; p < line.length; p++) {
+      const c = line[p];
+      const start = orientation === 'days-in-rows' ? c?.col : c?.row;
+      if (c && c.timeMinutes !== undefined && start === p && (c.kind === 'other' || c.kind === 'period')) timed.push({ pos: p, t: c.timeMinutes });
+    }
+    if (timed.length >= 3) {
+      timed.sort((a, b) => a.t - b.t);
+      // Read period numbers that disagree with the clock order are OCR slips: the
+      // times decide. Otherwise the read numbers anchor the ranking.
+      const known = timed.filter((x) => knownPeriods.has(x.pos)).map((x) => ({ x, n: knownPeriods.get(x.pos)!.value }));
+      const consistent = known.every((k, i) => i === 0 || k.n > known[i - 1].n);
+      const anchor = consistent ? known[0] : undefined;
+      const rank = (i: number) => (anchor ? anchor.n + (i - timed.indexOf(anchor.x)) : i + 1);
+      timed.forEach((x, i) => {
+        const n = rank(i);
+        if (n >= 1 && n <= 12 && (!knownPeriods.has(x.pos) || !consistent)) knownPeriods.set(x.pos, { value: n, confidence: 0.6 });
+      });
+    }
+  }
   // Any other line that is mostly header-ish (other/period/day cells, no lessons) above/before the data is a header too.
   const firstDataDay = Math.min(...[...knownDays.keys()], Infinity);
   const firstDataPeriod = Math.min(...[...knownPeriods.keys()], Infinity);
@@ -216,7 +322,7 @@ function assignAxes(occ: (ParsedCell | undefined)[][], grid: Grid, orientation: 
   );
   // When no period labels were read, number the data columns/rows positionally.
   if (knownPeriods.size < 2 && knownDays.size >= 2) {
-    const dataPositions = periodPositions.filter((p) => (orientation === 'days-in-rows' ? !headerCols.has(p) && p !== dayLine : !headerRows.has(p) && p !== dayLine));
+    const dataPositions = periodPositions.filter((p) => periodIsData(p));
     const ordered = step === 1 ? dataPositions : [...dataPositions].reverse();
     ordered.forEach((p, i) => {
       if (!periodsAssigned.has(p)) periodsAssigned.set(p, { value: i + 1, inferred: true, confidence: 0.45 });
@@ -242,11 +348,14 @@ function assignAxes(occ: (ParsedCell | undefined)[][], grid: Grid, orientation: 
     if (orientation === 'days-in-rows' ? headerRows.has(p) || p === periodLine : headerCols.has(p) || p === periodLine) return false;
     return lineHasLessons(line);
   };
+  // Days are never extrapolated past the labels that were read: a trailing
+  // unlabeled line is a notes row or a second line of the last day, not Friday.
   const daysAssigned = inferSequenceGaps(
     dayPositions,
     knownDays,
     (d) => dayIndex(d),
-    (n) => (n >= 0 && n < ALL_DAYS.length ? ALL_DAYS[n] : null),
+    // extrapolation never invents a weekend day
+    (n) => (n >= dayIndex('sun') && n <= dayIndex('thu') ? ALL_DAYS[n] : null),
     dayStep,
     dayIsData,
   );
@@ -257,6 +366,26 @@ function assignAxes(occ: (ParsedCell | undefined)[][], grid: Grid, orientation: 
       ordered.forEach((p, i) => {
         if (!daysAssigned.has(p)) daysAssigned.set(p, { value: SCHOOL_DAYS[i], inferred: true, confidence: 0.4 });
       });
+    }
+  }
+
+  // Layouts without ruling lines split a cell into several projection rows
+  // (class line / subject line): unlabeled data lines adopt the nearest labeled one.
+  if (grid.method !== 'lines') {
+    const dayCenters = orientation === 'days-in-rows' ? grid.rowLines : grid.colLines;
+    const center = (p: number) => (dayCenters[p] + dayCenters[p + 1]) / 2;
+    const labeled = [...daysAssigned.keys()].sort((a, b) => a - b);
+    if (labeled.length >= 2) {
+      const spacing = median(labeled.slice(1).map((p, i) => Math.abs(center(p) - center(labeled[i]))));
+      for (const p of dayPositions) {
+        if (daysAssigned.has(p) || !dayIsData(p)) continue;
+        let best = labeled[0];
+        for (const q of labeled) if (Math.abs(center(q) - center(p)) < Math.abs(center(best) - center(p))) best = q;
+        if (Math.abs(center(best) - center(p)) <= spacing * 0.45) {
+          const v = daysAssigned.get(best)!;
+          daysAssigned.set(p, { value: v.value, inferred: true, confidence: v.confidence * 0.9 });
+        }
+      }
     }
   }
 
@@ -279,7 +408,10 @@ function scoreAssignment(a: AxisAssignment | null): number {
  * holds the periods, then turns every data cell into structured lessons.
  */
 export function parseSchedule(reads: CellRead[], grid: Grid): ParseOutput {
-  const cells = reads.map(classifyCell);
+  const cells = reads
+    .flatMap((r) => splitMultiDayCell(r, grid))
+    .flatMap((r) => splitMergedLabels(r, grid))
+    .map(classifyCell);
   const occ = buildOccupancy(cells, grid);
   const warnings: string[] = [];
 

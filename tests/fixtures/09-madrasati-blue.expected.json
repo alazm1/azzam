@@ -1,0 +1,106 @@
+{
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "ثاني/١"
+    },
+    {
+      "day": "sun",
+      "period": 3,
+      "className": "ثاني/٢"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "ثاني/٣"
+    },
+    {
+      "day": "sun",
+      "period": 6,
+      "className": "ثاني/٤"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "ثاني/١"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "ثاني/٣"
+    },
+    {
+      "day": "mon",
+      "period": 4,
+      "className": "ثاني/٤"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "ثاني/٢"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "ثاني/٣"
+    },
+    {
+      "day": "tue",
+      "period": 3,
+      "className": "ثاني/٢"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "ثاني/٤"
+    },
+    {
+      "day": "tue",
+      "period": 5,
+      "className": "ثاني/١"
+    },
+    {
+      "day": "wed",
+      "period": 2,
+      "className": "ثاني/٢"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "ثاني/٤"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "ثاني/٣"
+    },
+    {
+      "day": "wed",
+      "period": 6,
+      "className": "ثاني/١"
+    },
+    {
+      "day": "thu",
+      "period": 3,
+      "className": "ثاني/٤"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "ثاني/٣"
+    },
+    {
+      "day": "thu",
+      "period": 5,
+      "className": "ثاني/٢"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "ثاني/١"
+    }
+  ],
+  "name": "09-madrasati-blue"
+}

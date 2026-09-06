@@ -1,0 +1,126 @@
+{
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 2,
+      "className": "١/٣"
+    },
+    {
+      "day": "sun",
+      "period": 3,
+      "className": "١/٢"
+    },
+    {
+      "day": "sun",
+      "period": 5,
+      "className": "٢/٢"
+    },
+    {
+      "day": "sun",
+      "period": 6,
+      "className": "٣/٣"
+    },
+    {
+      "day": "sun",
+      "period": 7,
+      "className": "٢/٣"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "١/٢"
+    },
+    {
+      "day": "mon",
+      "period": 2,
+      "className": "١/٣"
+    },
+    {
+      "day": "mon",
+      "period": 3,
+      "className": "٢/٢"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "٢/٣"
+    },
+    {
+      "day": "mon",
+      "period": 6,
+      "className": "٣/٢"
+    },
+    {
+      "day": "mon",
+      "period": 7,
+      "className": "٣/٣"
+    },
+    {
+      "day": "tue",
+      "period": 1,
+      "className": "٢/٢"
+    },
+    {
+      "day": "tue",
+      "period": 2,
+      "className": "٣/٣"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "٣/٢"
+    },
+    {
+      "day": "tue",
+      "period": 5,
+      "className": "١/٣"
+    },
+    {
+      "day": "wed",
+      "period": 2,
+      "className": "٢/٢"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "٣/٢"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "١/٢"
+    },
+    {
+      "day": "wed",
+      "period": 6,
+      "className": "٢/٣"
+    },
+    {
+      "day": "thu",
+      "period": 1,
+      "className": "١/٣"
+    },
+    {
+      "day": "thu",
+      "period": 2,
+      "className": "٣/٣"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "٣/٢"
+    },
+    {
+      "day": "thu",
+      "period": 5,
+      "className": "١/٢"
+    },
+    {
+      "day": "thu",
+      "period": 7,
+      "className": "٢/٣"
+    }
+  ],
+  "name": "12-photo-asc"
+}

@@ -1,0 +1,90 @@
+{
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "ثاني/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "sun",
+      "period": 6,
+      "className": "ثاني/١",
+      "subject": "تربية بدنية"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "ثالث ابتدائي/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "mon",
+      "period": 4,
+      "className": "ثاني/١",
+      "subject": "تربية فنية"
+    },
+    {
+      "day": "mon",
+      "period": 5,
+      "className": "ثالث ابتدائي/٢",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "tue",
+      "period": 1,
+      "className": "ثالث ابتدائي/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "ثالث ابتدائي/٢",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "wed",
+      "period": 2,
+      "className": "ثالث ابتدائي/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "wed",
+      "period": 4,
+      "className": "ثالث ابتدائي/٢",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "wed",
+      "period": 5,
+      "className": "ثاني/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "wed",
+      "period": 6,
+      "className": "ثاني/١",
+      "subject": "تربية بدنية"
+    },
+    {
+      "day": "thu",
+      "period": 3,
+      "className": "ثاني/١",
+      "subject": "لغة إنجليزية"
+    },
+    {
+      "day": "thu",
+      "period": 5,
+      "className": "ثاني/١",
+      "subject": "تربية فنية"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "ثاني/١",
+      "subject": "تربية بدنية"
+    }
+  ],
+  "name": "13-bubbles-no-lines"
+}

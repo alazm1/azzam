@@ -51,6 +51,10 @@ export interface LineCrop {
   image: GrayImage;
   /** Height of the ink in the working image (before scaling). */
   inkHeight: number;
+  /** Working-image x of the crop's left edge, its scale factor and padding (to map word boxes back). */
+  originX: number;
+  scale: number;
+  pad: number;
 }
 
 /**
@@ -172,6 +176,8 @@ export function prepareCellLines(gray: GrayImage, textInk: BinaryImage, cell: Ce
     if (ix1 < ix0) continue;
     const inkHeight = by1 - by0;
     if (inkHeight < 4 || ix1 - ix0 < 4) continue;
+    // a flat stroke (dash marking a free period) is not text
+    if (inkHeight <= 7 && (ix1 - ix0 + 1) / inkHeight >= 4) continue;
     if (inkCount(textInk, ix0, by0, ix1 + 1, by1) < 12) continue;
     // stray dots / diacritics that were not merged into a text line
     const tallest = Math.max(...bands.map((b) => b[1] - b[0]));
@@ -191,7 +197,7 @@ export function prepareCellLines(gray: GrayImage, textInk: BinaryImage, cell: Ce
     const scale = Math.max(1, Math.min(6, 42 / inkHeight));
     if (scale > 1.05) crop = resizeGray(crop, crop.width * scale, crop.height * scale);
     if (scale > 1.3) crop = unsharp(crop);
-    out.push({ image: padGray(crop, 24, 255), inkHeight });
+    out.push({ image: padGray(crop, 24, 255), inkHeight, originX: rect.x, scale, pad: 24 });
   }
   return out;
 }
@@ -218,6 +224,8 @@ function chooseReading(
   const letters = norm.replace(/[^ء-ي]/g, '').length;
   const word = matchDay(norm) ?? matchSubject(norm) ?? (letters >= 3 ? matchPeriod(norm) : null);
   if (word && word.score >= 0.7 && ocrConfidence >= 55) return { text: ocrText, ocrConfidence };
+  // A real Arabic word (4+ letters) beats a short-label guess unless that guess is very sure.
+  if (letters >= 4 && ocrConfidence >= 45 && short.confidence < 0.85) return { text: ocrText, ocrConfidence };
   if (letters >= 4 && ocrConfidence >= 80 && !/\d/.test(norm)) return { text: ocrText, ocrConfidence };
   const ocrParse = labelScore(ocrText);
   const ocrScore = ocrParse * (ocrConfidence / 100);
@@ -229,6 +237,7 @@ function chooseReading(
 interface LineReading {
   text: string;
   confidence: number; // 0..100
+  words?: CellRead['words'];
 }
 
 /** Reads one text line: specialised short-label recogniser first, general OCR when needed. */
@@ -241,9 +250,16 @@ async function readLine(line: LineCrop, ocr: OcrEngine): Promise<LineReading> {
     return { text: short.text, confidence: Math.round(short.confidence * 100) };
   }
   try {
-    const res = await ocr.recognize(line.image, { mode: 'line' });
+    // very wide lines (merged header cells) hold several labels: let the OCR segment them
+    const wide = line.image.width / line.image.height > 5;
+    const res = await ocr.recognize(line.image, { mode: wide ? 'block' : 'line' });
     const chosen = chooseReading(res.text, res.confidence, short, shortParse);
-    return { text: chosen.text, confidence: chosen.ocrConfidence };
+    const words = chosen.text === res.text
+      ? res.words
+          .filter((w) => w.bbox)
+          .map((w) => ({ text: w.text, confidence: w.confidence, x0: line.originX + (w.bbox!.x0 - line.pad) / line.scale, x1: line.originX + (w.bbox!.x1 - line.pad) / line.scale }))
+      : undefined;
+    return { text: chosen.text, confidence: chosen.ocrConfidence, words };
   } catch {
     return short && shortParse > 0 ? { text: short.text, confidence: Math.round(short.confidence * 100) } : { text: '', confidence: 0 };
   }
@@ -257,7 +273,7 @@ async function readCells(
   onProgress: (current: number, total: number) => void,
 ): Promise<CellRead[]> {
   const dim = Math.max(gray.width, gray.height);
-  const inset = Math.max(3, Math.round(dim * 0.004));
+  const baseInset = Math.max(3, Math.round(dim * 0.004));
   const reads: CellRead[] = [];
   const jobs: Promise<void>[] = [];
   let done = 0;
@@ -267,6 +283,8 @@ async function readCells(
     onProgress(done, total);
   };
   for (const cell of grid.cells) {
+    // Card layouts: keep clear of the rounded outline of each box.
+    const inset = grid.method === 'boxes' ? Math.max(baseInset, Math.round(Math.min(cell.w, cell.h) * 0.1)) : baseInset;
     const ink = inkCount(textInk, cell.x + inset, cell.y + inset, cell.x + cell.w - inset, cell.y + cell.h - inset);
     const area = Math.max(1, (cell.w - inset * 2) * (cell.h - inset * 2));
     if (ink < 12 || ink / area < 0.0015) {
@@ -285,7 +303,8 @@ async function readCells(
         .then((results) => {
           const texts = results.map((r) => r.text.trim()).filter(Boolean);
           const conf = results.length ? results.reduce((s, r) => s + r.confidence, 0) / results.length : 0;
-          reads.push({ ...cell, text: texts.join('\n'), ocrConfidence: conf });
+          const words = results.flatMap((r) => r.words ?? []);
+          reads.push({ ...cell, text: texts.join('\n'), ocrConfidence: conf, words: words.length ? words : undefined });
         })
         .catch(() => {
           reads.push({ ...cell, text: '', ocrConfidence: 0 });
@@ -309,6 +328,7 @@ interface PassResult {
 async function runPass(
   gray: GrayImage,
   binary: BinaryImage,
+  lineBinary: BinaryImage,
   rotation: 0 | 90 | 180 | 270,
   ocr: OcrEngine,
   onProgress: ProgressCallback,
@@ -316,7 +336,7 @@ async function runPass(
   progressSpan: number,
 ): Promise<PassResult> {
   onProgress({ stage: 'detect', progress: progressBase, message: STAGE_MESSAGES.detect });
-  const det = detectGrid(binary);
+  const det = detectGrid(binary, {}, lineBinary);
   if (!det.grid || det.grid.rows < 2 || det.grid.cols < 2) {
     return { parse: emptyParse(), grid: det.grid, reads: [], gray, rotation };
   }
@@ -353,7 +373,7 @@ export async function extractSchedule(raster: Raster, options: ExtractOptions): 
   await options.ocr.init();
 
   const pre = preprocess(raster, { maxDimension: options.maxDimension });
-  let best = await runPass(pre.gray, pre.binary, 0, options.ocr, onProgress, 0.1, 0.8);
+  let best = await runPass(pre.gray, pre.binary, pre.lineBinary, 0, options.ocr, onProgress, 0.1, 0.8);
 
   if (options.tryRotations !== false && !passIsGood(best.parse)) {
     const rotations: Array<90 | 180 | 270> = [180, 90, 270];
@@ -361,8 +381,9 @@ export async function extractSchedule(raster: Raster, options: ExtractOptions): 
       onProgress({ stage: 'detect', progress: 0.9, message: 'محاولة قراءة الصورة باتجاه مختلف…' });
       const g = rotateGray(pre.gray, rot);
       const b = binarize(g);
-      const pass = await runPass(g, b, rot, options.ocr, onProgress, 0.9, 0.08);
-      if (pass.parse.score > best.parse.score) best = pass;
+      const pass = await runPass(g, b, binarize(g, 5), rot, options.ocr, onProgress, 0.9, 0.08);
+      // Only real day/period words justify switching orientation, not a higher raw score.
+      if (pass.parse.daysRead >= 2 && pass.parse.periodsRead >= 1 && pass.parse.score > best.parse.score) best = pass;
       if (passIsGood(best.parse)) break;
     }
   }

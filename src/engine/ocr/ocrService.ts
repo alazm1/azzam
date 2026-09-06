@@ -109,12 +109,12 @@ export class TesseractOcrEngine implements OcrEngine {
         this.currentMode.set(worker, mode);
       }
       const { data } = await worker.recognize(encoded as never, {}, { text: true, blocks: true });
-      const words: { text: string; confidence: number }[] = [];
+      const words: OcrResult['words'] = [];
       for (const block of data.blocks ?? []) {
         for (const para of block.paragraphs ?? []) {
           for (const line of para.lines ?? []) {
             for (const word of line.words ?? []) {
-              if (word.text.trim()) words.push({ text: word.text, confidence: word.confidence });
+              if (word.text.trim()) words.push({ text: word.text, confidence: word.confidence, bbox: word.bbox ? { x0: word.bbox.x0, y0: word.bbox.y0, x1: word.bbox.x1, y1: word.bbox.y1 } : undefined });
             }
           }
         }

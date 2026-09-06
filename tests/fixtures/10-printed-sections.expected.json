@@ -1,0 +1,91 @@
+{
+  "orientation": "days-in-rows",
+  "lessons": [
+    {
+      "day": "sun",
+      "period": 1,
+      "className": "٣/د",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "sun",
+      "period": 3,
+      "className": "٣/ب",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "sun",
+      "period": 4,
+      "className": "٢/أ",
+      "subject": "نشاط"
+    },
+    {
+      "day": "sun",
+      "period": 7,
+      "className": "منتظر ١"
+    },
+    {
+      "day": "mon",
+      "period": 1,
+      "className": "منتظر ٢"
+    },
+    {
+      "day": "mon",
+      "period": 3,
+      "className": "٣/ج",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "mon",
+      "period": 7,
+      "className": "٣/ب",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "tue",
+      "period": 4,
+      "className": "٣/أ",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "tue",
+      "period": 6,
+      "className": "منتظر ٢"
+    },
+    {
+      "day": "wed",
+      "period": 1,
+      "className": "٣/أ",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "wed",
+      "period": 3,
+      "className": "٣/ج",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "wed",
+      "period": 6,
+      "className": "منتظر ٢"
+    },
+    {
+      "day": "thu",
+      "period": 4,
+      "className": "٣/د",
+      "subject": "البحث ومصادر المعلومات"
+    },
+    {
+      "day": "thu",
+      "period": 5,
+      "className": "٢/أ",
+      "subject": "نشاط"
+    },
+    {
+      "day": "thu",
+      "period": 6,
+      "className": "منتظر ١"
+    }
+  ],
+  "name": "10-printed-sections"
+}

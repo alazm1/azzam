@@ -1,5 +1,5 @@
 import type { ExtractedLesson } from '../types';
-import { normalizeArabic } from './normalize';
+import { normalizeArabic, toArabicDigits } from './normalize';
 
 export interface ValidationOutput {
   lessons: ExtractedLesson[];
@@ -14,7 +14,11 @@ export const FAILURE_MESSAGE = 'لم نتمكن من قراءة الجدول ب�
 
 /** Canonical key for grouping near-identical class names. */
 export function classKey(name: string): string {
-  return normalizeArabic(name).replace(/\s+/g, '').replace(/هـ/g, 'ه');
+  return normalizeArabic(name)
+    .replace(/هـ/g, 'ه')
+    .replace(/\s*[/\\-]+\s*/g, '/')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -42,6 +46,9 @@ export function validateSchedule(lessons: ExtractedLesson[], daysCount: number, 
     if (g) l.className = g.name;
   }
 
+  fixDigitPairOrder(cleaned);
+  fixSectionStyle(cleaned);
+
   const recognised = cleaned.filter((l) => l.confidence >= 0.5).length;
   const withClass = cleaned.filter((l) => l.className && l.confidence >= 0.35).length;
   const dayScore = Math.min(1, daysCount / 5);
@@ -50,4 +57,40 @@ export function validateSchedule(lessons: ExtractedLesson[], daysCount: number, 
   const quality = 0.35 * dayScore + 0.25 * periodScore + 0.4 * lessonScore;
   const ok = daysCount >= 3 && periodsCount >= 3 && cleaned.length >= 3 && quality >= 0.45;
   return { lessons: cleaned, warnings, quality, ok, message: ok ? undefined : FAILURE_MESSAGE };
+}
+
+/**
+ * "2/4"-style names are ambiguous in direction. In a teacher's schedule the
+ * grade is (almost always) the constant part and the section varies, so when
+ * the second number is constant while the first varies, the pairs were read
+ * mirrored and are swapped back.
+ */
+function fixDigitPairOrder(lessons: ExtractedLesson[]): void {
+  const pairs = lessons
+    .map((l) => ({ l, m: normalizeArabic(l.className).match(/^(\d{1,2})\/(\d{1,2})$/) }))
+    .filter((x) => x.m) as Array<{ l: ExtractedLesson; m: RegExpMatchArray }>;
+  if (pairs.length < 3) return;
+  const firsts = new Set(pairs.map((p) => p.m[1]));
+  const seconds = new Set(pairs.map((p) => p.m[2]));
+  if (seconds.size === 1 && firsts.size >= 2) {
+    for (const p of pairs) p.l.className = `${toArabicDigits(p.m[2])}/${toArabicDigits(p.m[1])}`;
+  }
+}
+
+/**
+ * A bare alef and the digit one look alike. When most sections in the schedule
+ * are letters, a "/١" section is really "/أ" (and vice versa).
+ */
+function fixSectionStyle(lessons: ExtractedLesson[]): void {
+  const parsed = lessons.map((l) => ({ l, m: normalizeArabic(l.className).match(/^(\d{1,2})\/(\S+)$/) }));
+  const sections = parsed.filter((p) => p.m).map((p) => p.m![2]);
+  if (sections.length < 3) return;
+  const letters = sections.filter((x) => /^[ء-ي]+$/.test(x) && x !== 'ا').length;
+  const digits = sections.filter((x) => /^\d+$/.test(x) && x !== '1').length;
+  for (const p of parsed) {
+    if (!p.m) continue;
+    const grade = toArabicDigits(p.m[1]);
+    if (letters > digits && letters >= 2 && (p.m[2] === '1' || p.m[2] === 'ا')) p.l.className = `${grade}/أ`;
+    else if (digits > letters && digits >= 2 && p.m[2] === 'ا') p.l.className = `${grade}/١`;
+  }
 }

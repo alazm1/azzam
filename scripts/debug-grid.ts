@@ -7,7 +7,7 @@ import { binaryToGray } from '../src/engine/image/raster';
 const name = process.argv[2];
 const raster = loadRaster(join(FIXTURES, name));
 const pre = preprocess(raster);
-const det = detectGrid(pre.binary);
+const det = detectGrid(pre.binary, {}, pre.lineBinary);
 console.log('gray', pre.gray.width, pre.gray.height, 'persp', pre.perspectiveCorrected, 'skew', pre.skewDegrees.toFixed(2), 'quad', JSON.stringify(pre.quad));
 console.log('rows', det.grid?.rows, 'cols', det.grid?.cols, det.grid?.method);
 console.log('rowLines', det.grid?.rowLines.map((v) => Math.round(v)).join(','));
