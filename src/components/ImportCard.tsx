@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { arabic } from '../models/design';
+import { bookmarkletSource } from '../services/tableImport';
 
 export interface ReadProgress {
   percent: number;
@@ -87,6 +88,51 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
         </button>
       )}
       <p className="mt-4 text-center text-xs text-muted">✓ تُقرأ الصور داخل جهازك ولا تُرفع إلى خادم</p>
+      <MadrasatiExport />
     </section>
+  );
+}
+
+/**
+ * "زر جدولي": a bookmark the teacher adds once to the phone's browser. Tapped
+ * on the schedule page inside Madrasati (their own logged-in session), it
+ * sends the table straight to the app. No credentials, no server.
+ */
+function MadrasatiExport() {
+  const [copied, setCopied] = useState(false);
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  const appUrl = typeof window !== 'undefined' ? new URL(import.meta.env.BASE_URL, window.location.origin).href : '/';
+  const code = bookmarkletSource(appUrl);
+  // React refuses javascript: hrefs; the bookmarklet link is set on the element directly.
+  useEffect(() => {
+    linkRef.current?.setAttribute('href', code);
+  }, [code]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 3000);
+    } catch {
+      window.prompt('انسخ هذا الرابط:', code);
+    }
+  };
+  return (
+    <details className="mt-4 border-t border-line pt-4">
+      <summary className="cursor-pointer text-sm font-bold text-primary">تصدير الجدول من منصة مدرستي مباشرة</summary>
+      <p className="mt-2 text-xs leading-6 text-muted">
+        أضف زر «جدولي» إلى مفضلة متصفحك مرة واحدة. بعدها افتح مدرستي على جوالك كالمعتاد، ادخل على صفحة جدولك، ثم اضغط الزر من المفضلة فينتقل الجدول إلى هنا فورًا. الزر يعمل داخل جلستك أنت، ولا يطلب بيانات دخولك ولا يرسل شيئًا إلى أي خادم.
+      </p>
+      <ol className="mt-2 list-decimal space-y-1 pe-5 text-xs leading-6 text-muted">
+        <li>
+          اضغط <button type="button" className="font-bold text-primary underline" onClick={copy}>{copied ? 'تم النسخ ✓' : 'نسخ رابط زر جدولي'}</button>.
+        </li>
+        <li>في متصفح الجوال أضف هذه الصفحة إلى المفضلة (الإشارات المرجعية).</li>
+        <li>افتح المفضلة، حرّر الإشارة الجديدة، سمّها «جدولي»، وامسح عنوانها والصق الرابط الذي نسخته مكانه، ثم احفظ.</li>
+        <li>ادخل مدرستي وافتح صفحة الجدول الدراسي، ثم افتح المفضلة واضغط «جدولي».</li>
+      </ol>
+      <a ref={linkRef} id="jadwali-bookmarklet" className="mt-3 hidden text-xs font-bold text-primary md:inline-block" onClick={(e) => e.preventDefault()} title="اسحب هذا الرابط إلى شريط المفضلة">
+        على الكمبيوتر: اسحب هذا الرابط إلى شريط المفضلة → جدولي
+      </a>
+    </details>
   );
 }

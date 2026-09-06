@@ -16,7 +16,8 @@
     "bench": "vite-node scripts/bench.ts",
     "e2e": "node scripts/e2e-smoke.mjs",
     "icons": "node scripts/gen-icons.mjs",
-    "glyph-atlas": "node scripts/gen-glyph-atlas.mjs"
+    "glyph-atlas": "node scripts/gen-glyph-atlas.mjs",
+    "e2e:madrasati": "node scripts/e2e-bookmarklet.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
