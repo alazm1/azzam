@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { loadSmartReaderConfig, setSmartReaderEnabled, smartReaderEnabled } from '../services/smartReader';
 import { arabic } from '../models/design';
 
 export interface ReadProgress {
@@ -19,6 +20,11 @@ interface Props {
 /** Step 1 — photograph or pick the schedule image(s). */
 export function ImportCard({ progress, error, canReview, previews, onFiles, onReview }: Props) {
   const input = useRef<HTMLInputElement>(null);
+  const [smartAvailable, setSmartAvailable] = useState(false);
+  const [smartOn, setSmartOn] = useState(() => smartReaderEnabled());
+  useEffect(() => {
+    loadSmartReaderConfig().then((c) => setSmartAvailable(!!c.url));
+  }, []);
   return (
     <section className="rounded-2xl border border-line bg-[linear-gradient(145deg,#f5fbf8,#fff)] p-5 sm:p-6" aria-label="صوّر جدولك">
       <div className="mb-3 flex items-center gap-2.5">
@@ -86,7 +92,32 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
           مراجعة الجدول المقروء
         </button>
       )}
-      <p className="mt-4 text-center text-xs text-muted">✓ تُقرأ الصور داخل جهازك ولا تُرفع إلى خادم</p>
+      {smartAvailable ? (
+        <div className="mt-4 rounded-xl border border-line bg-surface p-3">
+          <label htmlFor="smart-reader" className="flex cursor-pointer items-center justify-between gap-3 text-sm font-bold">
+            <span>القراءة الذكية (أدق، عبر الإنترنت)</span>
+            <input
+              id="smart-reader"
+              type="checkbox"
+              role="switch"
+              className="peer sr-only"
+              checked={smartOn}
+              onChange={(e) => {
+                setSmartOn(e.target.checked);
+                setSmartReaderEnabled(e.target.checked);
+              }}
+            />
+            <span aria-hidden="true" className="relative block h-[21px] w-9 shrink-0 rounded-full bg-[#c9d5d0] transition-colors peer-checked:bg-primary after:absolute after:left-[3px] after:top-[3px] after:h-[15px] after:w-[15px] after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-[15px]" />
+          </label>
+          <p className="mt-1 text-xs leading-6 text-muted">
+            {smartOn
+              ? 'تُرسل الصورة إلى خدمة Google Gemini للقراءة فقط ولا تُحفظ لدينا. في الخدمة المجانية قد تستخدم Google المحتوى لتحسين خدماتها؛ أوقف هذا الخيار إن أردت القراءة على جهازك فقط.'
+              : 'تُقرأ الصور داخل جهازك فقط. القراءة الذكية أدق على لقطات الشاشة الصغيرة.'}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-4 text-center text-xs text-muted">✓ تُقرأ الصور داخل جهازك ولا تُرفع إلى خادم</p>
+      )}
     </section>
   );
 }

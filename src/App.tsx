@@ -68,16 +68,18 @@ export function App() {
       setReading(true);
       setProgress({ percent: 1, status: 'تجهيز قارئ الصور…', active: true });
       const outcomes: ImageOutcome[] = [];
+      let usedSmart = false;
       try {
         for (let index = 0; index < files.length; index++) {
           const base = 12 + (index / files.length) * 82;
           const part = files.length > 1 ? ` · الصورة ${arabic(index + 1)} من ${arabic(files.length)}` : '';
           try {
-            const result = await analyzeScheduleImage(files[index], (ev) => {
-              const label = STAGE_LABELS[ev.stage] ?? 'تحليل صورة الجدول…';
+            const { result, reader } = await analyzeScheduleImage(files[index], (ev) => {
+              const label = ev.stage === 'ocr' && ev.message.includes('الذكية') ? ev.message : (STAGE_LABELS[ev.stage] ?? ev.message);
               const detail = ev.detail ? ` (${arabic(ev.detail.current)}/${arabic(ev.detail.total)})` : '';
               setProgress({ percent: base + ev.progress * (82 / files.length), status: label + detail + part, active: true });
             });
+            if (reader === 'smart') usedSmart = true;
             outcomes.push({ index, result, error: result.status === 'failed' ? result.message : undefined });
           } catch (e) {
             console.error(e);
@@ -91,8 +93,8 @@ export function App() {
         if (!merged.info.count) throw new Error('ظهرت عناوين الجدول، لكن لم نجد حصصًا واضحة. قرّب الصورة وتأكد أن المادة والفصل ظاهران.');
         setInfo(merged.info);
         setState((s) => ({ ...s, grid: merged.grid, source: 'photo', colors: {} }));
-        setProgress({ percent: 100, status: 'اكتملت القراءة', active: false });
-        showToast(`تمت قراءة ${arabic(merged.info.count)} حصة. راجعها قبل الحفظ.`);
+        setProgress({ percent: 100, status: usedSmart ? 'اكتملت القراءة الذكية' : 'اكتملت القراءة', active: false });
+        showToast(`تمت قراءة ${arabic(merged.info.count)} حصة${usedSmart ? ' بالقراءة الذكية' : ''}. راجعها قبل الحفظ.`);
         window.setTimeout(() => setEdit({ open: true, imported: true }), 350);
       } catch (e) {
         const message = e instanceof Error ? e.message : '';

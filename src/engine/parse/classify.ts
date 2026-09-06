@@ -435,7 +435,7 @@ export function stripNoise(norm: string): string {
 }
 
 /** "منتظر ١" / "انتظار" — standby periods are real slots in Saudi timetables. */
-function matchWaiting(norm: string): string | undefined {
+export function matchWaiting(norm: string): string | undefined {
   const flat = norm.replace(/\n/g, ' ').trim();
   const m = flat.match(/^(?:حصه\s*)?([ء-ي]{3,8})\s*(\d{1,2})?$/);
   if (!m) return undefined;
