@@ -11,7 +11,7 @@ import { analyzeScheduleImage, warmUpOcr } from './services/analysis';
 import { loadDesign, saveDesign } from './services/designStorage';
 import { mergeResults, type ImageOutcome, type MergeInfo } from './services/importer';
 import { drawSchedule, ensureFonts } from './services/wallpaper';
-import { decodePayload, importCapturedTables } from './services/tableImport';
+import { decodePayload, importCapturedTables, type CapturedPayload } from './services/tableImport';
 
 const STAGE_LABELS: Record<string, string> = {
   preprocess: 'تجهيز الصورة…',
@@ -54,6 +54,26 @@ export function App() {
 
   const patch = useCallback((p: Partial<DesignState>) => setState((s) => ({ ...s, ...p })), []);
 
+  /** Shared by "زر جدولي" (URL hash) and the paste box: turns captured tables into the grid. */
+  const importPayload = useCallback(
+    (payload: CapturedPayload, origin: string) => {
+      setError('');
+      const result = importCapturedTables(payload);
+      if (result.status !== 'ok') {
+        setError(result.message ?? 'لم نتعرف على الجدول.');
+        return false;
+      }
+      const merged = mergeResults([{ index: 0, result }]);
+      setInfo(merged.info);
+      setState((s) => ({ ...s, grid: merged.grid, source: 'photo', colors: {} }));
+      setProgress({ percent: 100, status: `تم استلام الجدول من ${origin}`, active: false });
+      showToast(`تم استلام ${arabic(merged.info.count)} حصة من ${origin}. راجعها قبل الحفظ.`);
+      window.setTimeout(() => setEdit({ open: true, imported: true }), 350);
+      return true;
+    },
+    [showToast],
+  );
+
   // "زر جدولي": the bookmarklet opens the app with the captured Madrasati table in the hash.
   useEffect(() => {
     const m = window.location.hash.match(/^#madrasati=([A-Za-z0-9_-]+)/);
@@ -64,18 +84,8 @@ export function App() {
       setError('تعذر قراءة البيانات القادمة من مدرستي. حاول الضغط على زر «جدولي» مرة أخرى من صفحة الجدول.');
       return;
     }
-    const result = importCapturedTables(payload);
-    if (result.status !== 'ok') {
-      setError(result.message ?? 'لم نتعرف على الجدول.');
-      return;
-    }
-    const merged = mergeResults([{ index: 0, result }]);
-    setInfo(merged.info);
-    setState((s) => ({ ...s, grid: merged.grid, source: 'photo', colors: {} }));
-    setProgress({ percent: 100, status: 'تم استلام الجدول من مدرستي', active: false });
-    showToast(`تم استلام ${arabic(merged.info.count)} حصة من مدرستي. راجعها قبل الحفظ.`);
-    window.setTimeout(() => setEdit({ open: true, imported: true }), 350);
-  }, [showToast]);
+    importPayload(payload, 'مدرستي');
+  }, [importPayload]);
 
   const readImages = useCallback(
     async (files: File[]) => {
@@ -204,7 +214,15 @@ export function App() {
         <div className="grid gap-5 lg:grid-cols-[370px_minmax(0,1fr)] lg:items-start lg:gap-7">
           <div className="contents lg:flex lg:flex-col lg:gap-5">
             <div className="order-1">
-              <ImportCard progress={progress} error={error} canReview={state.source !== 'empty'} previews={previews} onFiles={readImages} onReview={() => setEdit({ open: true, imported: state.source === 'photo' })} />
+              <ImportCard
+                progress={progress}
+                error={error}
+                canReview={state.source !== 'empty'}
+                previews={previews}
+                onFiles={readImages}
+                onReview={() => setEdit({ open: true, imported: state.source === 'photo' })}
+                onPaste={(payload) => importPayload(payload, 'النص المنسوخ')}
+              />
             </div>
             <div className="order-3">
               <SettingsPanel state={state} onChange={patch} />

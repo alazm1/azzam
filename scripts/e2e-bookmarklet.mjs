@@ -42,6 +42,22 @@ try {
   await page.screenshot({ path: join(root, 'tests', 'output', 'e2e-bookmarklet.png'), fullPage: true });
   console.log(cells.length >= 20 ? 'BOOKMARKLET OK' : 'BOOKMARKLET TOO FEW CELLS');
   process.exitCode = cells.length >= 20 ? 0 : 1;
+  // 4. paste flow: simulate pasting the page HTML into the paste box
+  await page.goto(`http://localhost:${port}/`);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const html = readFileSync(join(root, 'tests', 'output', 'fake-madrasati.html'), 'utf8');
+  await page.locator('summary', { hasText: 'مدرستي' }).click();
+  await page.locator('#madrasati-paste').evaluate((el, h) => {
+    const dt = new DataTransfer();
+    dt.setData('text/html', h);
+    dt.setData('text/plain', 'x');
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, html);
+  await page.getByRole('heading', { name: 'مراجعة الجدول المقروء' }).waitFor({ timeout: 15000 });
+  const pasteCells = await page.$$eval('dialog[open] table tbody button b', (els) => els.length);
+  console.log('paste flow cells:', pasteCells, pasteCells >= 20 ? 'PASTE OK' : 'PASTE FAILED');
+  if (pasteCells < 20) process.exitCode = 1;
 } catch (e) {
   console.error('BOOKMARKLET FAILED', e);
   process.exitCode = 1;

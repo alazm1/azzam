@@ -124,6 +124,51 @@ function emptyStats(started: number): ExtractionResult['stats'] {
   };
 }
 
+/** Expands a DOM table into a text matrix (merged cells repeated into every slot). */
+function matrixFromTable(table: HTMLTableElement): string[][] {
+  const m: string[][] = [];
+  const rows = [...table.rows];
+  if (rows.length > 80) return [];
+  rows.forEach((row, ri) => {
+    m[ri] ??= [];
+    let ci = 0;
+    for (const cell of [...row.cells]) {
+      while (m[ri][ci] !== undefined) ci++;
+      const copy = cell.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('script,style,button,input,select,svg').forEach((x) => x.remove());
+      copy.querySelectorAll('br,p,div,li').forEach((x) => x.append('\n'));
+      const text = (copy.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim().slice(0, 300);
+      const rs = Math.min(cell.rowSpan || 1, 20);
+      const cs = Math.min(cell.colSpan || 1, 20);
+      for (let r = ri; r < ri + rs; r++) {
+        m[r] ??= [];
+        for (let c = ci; c < ci + cs; c++) m[r][c] = text;
+      }
+      ci += cs;
+    }
+  });
+  const cols = Math.max(...m.map((r) => r.length), 0);
+  return m.map((r) => Array.from({ length: cols }, (_, i) => r[i] ?? ''));
+}
+
+/** Tables from pasted HTML (the clipboard keeps the table structure when copying from a web page). */
+export function tablesFromHtml(html: string): CapturedTable[] {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return [...doc.querySelectorAll('table')]
+    .slice(0, 12)
+    .map((t) => ({ cells: matrixFromTable(t) }))
+    .filter((t) => t.cells.length >= 3);
+}
+
+/** Tables from pasted plain text: tab-separated rows (how browsers copy tables as text). */
+export function tablesFromText(text: string): CapturedTable[] {
+  const lines = text.split(/\r?\n/);
+  const rows = lines.filter((l) => l.includes('\t')).map((l) => l.split('\t').map((c) => c.trim()));
+  if (rows.length < 3) return [];
+  const cols = Math.max(...rows.map((r) => r.length));
+  return [{ cells: rows.map((r) => Array.from({ length: cols }, (_, i) => r[i] ?? '')) }];
+}
+
 /**
  * The bookmarklet source. It runs inside the Madrasati page (the teacher's own
  * logged-in session), collects every table as text, and opens the app with the
@@ -132,21 +177,30 @@ function emptyStats(started: number): ExtractionResult['stats'] {
 export function bookmarkletSource(appUrl: string): string {
   const code = `
 (function(){
-  var T=[];
-  var tables=document.querySelectorAll('table');
-  for(var i=0;i<tables.length&&i<12;i++){
-    var t=tables[i],m=[],rows=t.rows;if(rows.length>80)continue;
-    for(var r=0;r<rows.length;r++){m[r]=m[r]||[];var ci=0;
-      for(var k=0;k<rows[r].cells.length;k++){var cell=rows[r].cells[k];while(m[r][ci]!==undefined)ci++;
-        var cp=cell.cloneNode(true);var junk=cp.querySelectorAll('script,style,button,input,select,svg,i');for(var j=0;j<junk.length;j++)junk[j].remove();
-        var brs=cp.querySelectorAll('br,p,div,li');for(j=0;j<brs.length;j++)brs[j].appendChild(document.createTextNode('\\n'));
-        var tx=(cp.innerText||cp.textContent||'').replace(/[ \\t]+/g,' ').replace(/\\n\\s*\\n+/g,'\\n').trim().slice(0,300);
-        var rs=Math.min(cell.rowSpan||1,20),cs=Math.min(cell.colSpan||1,20);
-        for(var rr=r;rr<r+rs;rr++){m[rr]=m[rr]||[];for(var cc=ci;cc<ci+cs;cc++)m[rr][cc]=tx;}ci+=cs;}}
-    var full=[];for(r=0;r<m.length;r++){var row=[];for(var c=0;c<m[r].length;c++)row.push(m[r][c]||'');full.push(row);}
-    if(full.length>=3)T.push({cells:full});
+  var T=[],docs=[document],fr=document.querySelectorAll('iframe,frame');
+  for(var f=0;f<fr.length;f++){try{var d=fr[f].contentDocument;if(d&&d.body)docs.push(d);}catch(e){}}
+  function txt(el){var cp=el.cloneNode(true);var junk=cp.querySelectorAll('script,style,button,input,select,svg,i');for(var j=0;j<junk.length;j++)junk[j].remove();
+    var brs=cp.querySelectorAll('br,p,div,li');for(j=0;j<brs.length;j++)brs[j].appendChild(document.createTextNode('\\n'));
+    return (cp.innerText||cp.textContent||'').replace(/[ \\t]+/g,' ').replace(/\\n\\s*\\n+/g,'\\n').trim().slice(0,300);}
+  var nTables=0,nGrids=0;
+  for(var di=0;di<docs.length;di++){var doc=docs[di];
+    var tables=doc.querySelectorAll('table');nTables+=tables.length;
+    for(var i=0;i<tables.length&&i<12;i++){
+      var t=tables[i],m=[],rows=t.rows;if(rows.length>80)continue;
+      for(var r=0;r<rows.length;r++){m[r]=m[r]||[];var ci=0;
+        for(var k=0;k<rows[r].cells.length;k++){var cell=rows[r].cells[k];while(m[r][ci]!==undefined)ci++;
+          var tx=txt(cell),rs=Math.min(cell.rowSpan||1,20),cs=Math.min(cell.colSpan||1,20);
+          for(var rr=r;rr<r+rs;rr++){m[rr]=m[rr]||[];for(var cc=ci;cc<ci+cs;cc++)m[rr][cc]=tx;}ci+=cs;}}
+      var full=[];for(r=0;r<m.length;r++){var row=[];for(var c=0;c<m[r].length;c++)row.push(m[r][c]||'');full.push(row);}
+      if(full.length>=3)T.push({cells:full});
+    }
+    var grids=doc.querySelectorAll('[role=grid],[role=table]');nGrids+=grids.length;
+    for(i=0;i<grids.length&&i<6;i++){var gr=grids[i].querySelectorAll('[role=row]'),g=[];
+      for(r=0;r<gr.length&&r<80;r++){var cells=gr[r].querySelectorAll('[role=cell],[role=gridcell],[role=columnheader],[role=rowheader]'),row2=[];
+        for(k=0;k<cells.length;k++)row2.push(txt(cells[k]));if(row2.length)g.push(row2);}
+      if(g.length>=3)T.push({cells:g});}
   }
-  if(!T.length){alert('لم نجد جدولًا في هذه الصفحة. افتح صفحة الجدول الدراسي أولًا.');return;}
+  if(!T.length){alert('جدولي: لم نجد جدولًا في هذه الصفحة. (جداول: '+nTables+'، شبكات: '+nGrids+'، إطارات: '+fr.length+'، الصفحة: '+location.hostname+location.pathname+')\\nافتح صفحة الجدول الدراسي أولًا، أو انسخ الصفحة كاملة والصقها في تطبيق جدول المعلم.');return;}
   var json=JSON.stringify({v:1,source:location.hostname,url:location.href.split('?')[0],tables:T});
   var bytes=new TextEncoder().encode(json),bin='';for(var b=0;b<bytes.length;b++)bin+=String.fromCharCode(bytes[b]);
   var b64=btoa(bin).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');

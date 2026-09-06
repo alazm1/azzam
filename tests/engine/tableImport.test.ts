@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodePayload, importCapturedTables, type CapturedPayload } from '../../src/services/tableImport';
+import { decodePayload, importCapturedTables, tablesFromText, type CapturedPayload } from '../../src/services/tableImport';
 
 const madrasatiLike: CapturedPayload = {
   v: 1,
@@ -35,5 +35,17 @@ describe('importCapturedTables', () => {
     const b64 = Buffer.from(json, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     expect(decodePayload(b64)?.tables[0].cells[1][0]).toBe('الأحد');
     expect(decodePayload('not-base64!!')).toBeNull();
+  });
+});
+
+describe('tablesFromText', () => {
+  it('reads tab-separated rows copied from a web table', () => {
+    const text = ['اليوم\tالأولى\tالثانية\tالثالثة', 'الأحد\t٢/أ\t\t١/ب', 'الاثنين\t\t٣/ب\t٢/أ', 'الثلاثاء\t١/أ\t٢/ب\t'].join('\n');
+    const tables = tablesFromText(text);
+    expect(tables).toHaveLength(1);
+    expect(tables[0].cells[1]).toEqual(['الأحد', '٢/أ', '', '١/ب']);
+    const r = importCapturedTables({ v: 1, source: 'paste', tables });
+    expect(r.status).toBe('ok');
+    expect(r.lessons.find((l) => l.day === 'mon' && l.period === 2)?.className).toBe('٣/ب');
   });
 });
