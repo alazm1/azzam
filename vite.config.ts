@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const base = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -16,14 +19,15 @@ export default defineConfig({
         description: 'صوّر جدولك، وسنحوّله إلى جدول ذكي مرتب خلال لحظات.',
         lang: 'ar',
         dir: 'rtl',
-        start_url: '/',
+        start_url: base,
+        scope: base,
         display: 'standalone',
         background_color: '#f6f8f7',
         theme_color: '#0f7a4f',
         icons: [
-          { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
@@ -33,7 +37,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/tesseract/') || url.pathname.startsWith('/tessdata/'),
+            urlPattern: ({ url }) => url.pathname.includes('/tesseract/') || url.pathname.includes('/tessdata/'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'ocr-assets',

@@ -9,7 +9,7 @@ let engine: OcrEngine | null = null;
 /** Lazily creates the on-device OCR engine (all assets are served from this origin). */
 export function getOcrEngine(): OcrEngine {
   if (engine) return engine;
-  const origin = window.location.origin;
+  const origin = new URL(import.meta.env.BASE_URL, window.location.origin).href.replace(/\/$/, '');
   const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
   engine = new TesseractOcrEngine({
     langs: 'ara',
