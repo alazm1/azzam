@@ -15,15 +15,15 @@
 
 @theme {
   --font-sans: 'Cairo', 'Segoe UI', Tahoma, system-ui, sans-serif;
-  --color-primary: #0f7a4f;
-  --color-primary-dark: #0b5c3b;
-  --color-primary-light: #e3f3ea;
+  --color-primary: #0c574d;
+  --color-primary-dark: #074138;
+  --color-primary-light: #e8f2ed;
   --color-primary-soft: #c9ecd9;
-  --color-ink: #16261f;
-  --color-muted: #6b7a72;
-  --color-line: #e2e8e4;
+  --color-ink: #163d36;
+  --color-muted: #657772;
+  --color-line: #e1e9e5;
   --color-surface: #ffffff;
-  --color-canvas: #f4f7f5;
+  --color-canvas: #f8faf9;
   --color-warn: #b7791f;
   --color-warn-light: #fff4dd;
   --color-danger: #c0392b;
@@ -67,10 +67,11 @@ button, input, select, textarea {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 1rem;
-    padding-inline: 1.25rem;
+    border-radius: 0.6rem;
+    padding: 0.7rem 1.25rem;
     font-weight: 700;
-    min-height: 3.25rem;
+    font-size: 0.95rem;
+    min-height: 3rem;
     transition: background-color 0.15s ease, transform 0.1s ease;
     user-select: none;
     touch-action: manipulation;
@@ -88,15 +89,17 @@ button, input, select, textarea {
     cursor: default;
   }
   .btn-secondary {
-    background: var(--color-primary-light);
-    color: var(--color-primary-dark);
+    background: #fff;
+    border: 1px solid #d7e1dc;
+    color: var(--color-ink);
   }
   .btn-secondary:hover {
-    background: var(--color-primary-soft);
+    background: #f0f6f3;
   }
   .btn-ghost {
     background: transparent;
     color: var(--color-muted);
+    min-height: 2.5rem;
   }
   .btn-ghost:hover {
     background: var(--color-line);
@@ -131,6 +134,13 @@ button, input, select, textarea {
 html, body, #root {
   max-width: 100%;
   overflow-x: hidden;
+}
+
+dialog[open] {
+  display: block;
+}
+dialog:not([open]) {
+  display: none;
 }
 
 .safe-bottom {

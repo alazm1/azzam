@@ -1,9 +1,9 @@
 /**
  * Browser smoke test: serves the production build, uploads a fixture through
- * the real UI (Tesseract running in the page), walks through review →
- * confirm → schedule and saves screenshots to tests/output/e2e-*.png.
+ * the real UI (Tesseract running in the page), reviews, applies, exports the
+ * wallpaper and saves screenshots to tests/output/e2e-*.png.
  *
- *   npm run build && node scripts/e2e-smoke.mjs
+ *   npm run build && node scripts/e2e-smoke.mjs [fixture]
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -39,41 +39,42 @@ page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 
 try {
   await page.goto(`http://localhost:${port}/`);
-  await page.getByRole('button', { name: 'رفع صورة' }).waitFor();
-  await page.screenshot({ path: join(out, 'e2e-1-home.png') });
+  await page.getByRole('button', { name: 'تصوير الجدول أو اختيار صورة' }).waitFor();
+  await page.screenshot({ path: join(out, 'e2e-1-home.png'), fullPage: true });
 
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'رفع صورة' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'تصوير الجدول أو اختيار صورة' }).click()]);
   await chooser.setFiles(join(root, 'tests', 'fixtures', fixture));
-
-  await page.getByText('جارٍ تحليل الجدول').waitFor();
-  await page.screenshot({ path: join(out, 'e2e-2-analyzing.png') });
   const t0 = Date.now();
-  await page.getByRole('heading', { name: 'راجع جدولك قبل الحفظ' }).waitFor({ timeout: 180000 });
+  await page.getByRole('heading', { name: 'مراجعة الجدول المقروء' }).waitFor({ timeout: 180000 });
   console.log(`analysis finished in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-  await page.screenshot({ path: join(out, 'e2e-3-review.png'), fullPage: true });
+  await page.screenshot({ path: join(out, 'e2e-2-review.png'), fullPage: true });
 
-  // edit one cell through the sheet
-  await page.getByRole('button', { name: /الأحد الحصة ١/ }).click();
-  await page.getByRole('dialog').waitFor();
-  await page.screenshot({ path: join(out, 'e2e-4-sheet.png') });
-  await page.getByLabel('الفصل / الشعبة').fill('٢/ج');
-  await page.getByRole('button', { name: 'حفظ' }).click();
-
+  // edit one cell then apply
+  await page.getByRole('button', { name: /الأحد، الحصة الأولى/ }).click();
+  await page.getByRole('combobox', { name: 'الفصل' }).fill('٢/ج');
+  await page.screenshot({ path: join(out, 'e2e-3-cell.png'), fullPage: true });
   await page.getByRole('button', { name: 'اعتماد الجدول' }).click();
-  await page.getByRole('heading', { name: 'جدولي الأسبوعي' }).waitFor();
-  await page.screenshot({ path: join(out, 'e2e-5-schedule.png'), fullPage: true });
+  await page.getByText('تمت مراجعته').waitFor();
+  await page.screenshot({ path: join(out, 'e2e-4-preview.png'), fullPage: true });
 
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('jadwal-almuallim:schedule:v1') || 'null'));
-  console.log('saved lessons:', saved?.lessons?.length, 'periods:', saved?.periods?.join(','), 'first:', JSON.stringify(saved?.lessons?.[0]));
+  // night theme + export
+  await page.getByText('ليلي', { exact: true }).click();
+  await page.getByRole('button', { name: /حفظ الصورة/ }).click();
+  await page.getByRole('heading', { name: 'صورتك جاهزة' }).waitFor();
+  await page.screenshot({ path: join(out, 'e2e-5-export.png'), fullPage: true });
+  const png = await page.evaluate(async () => {
+    const img = document.querySelector('dialog[open] img');
+    const res = await fetch(img.src);
+    const blob = await res.blob();
+    return { size: blob.size, type: blob.type };
+  });
+  console.log('exported png:', png);
 
-  await page.getByRole('button', { name: 'اليوم' }).click();
-  await page.screenshot({ path: join(out, 'e2e-6-today.png'), fullPage: true });
-  await page.getByRole('button', { name: 'الإعدادات' }).click();
-  await page.screenshot({ path: join(out, 'e2e-7-settings.png'), fullPage: true });
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('jadwal-almuallim:design:v1') || 'null'));
+  console.log('saved: source=', saved?.source, 'periods=', saved?.grid?.length, 'lessons=', saved?.grid?.flat().filter((c) => c.classroom || c.subject).length, 'theme=', saved?.theme);
 
-  // reload → schedule persisted
   await page.reload();
-  await page.getByRole('heading', { name: 'جدولي الأسبوعي' }).waitFor();
+  await page.getByText('تمت مراجعته').waitFor();
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   console.log('page horizontal overflow:', horizontalOverflow);
   console.log('E2E OK');
