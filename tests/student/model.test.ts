@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { activeDays, courseKey, fmtTime, hourRange, parseTime, type Lecture } from '../../src/student/model';
-import { smartResponseToLectures } from '../../src/student/smart';
+import { normalizeDay, smartResponseToLectures } from '../../src/student/smart';
 
 const L = (day: Lecture['day'], start: number, end: number, course = 'x'): Lecture => ({ id: course + start, day, start, end, course });
 
@@ -46,6 +46,11 @@ describe('university smart reader', () => {
     expect(lectures.map((l) => `${l.day}:${l.start}-${l.end}:${l.course}`)).toEqual(['sun:480-590:101 تقن', 'tue:780-880:نفس 3K5-102', 'mon:600-650:bad end']);
     expect(lectures[1].room).toBe('0.308 1.1.2');
     expect(lectures[1].needsReview).toBe(true);
+  });
+
+  it('accepts day names and letter codes as a safety net', () => {
+    expect(['Sunday', 'الأحد', 'U', 'thu', 'R', 'Wednesday'].map(normalizeDay)).toEqual(['sun', 'sun', 'sun', 'thu', 'thu', 'wed']);
+    expect(normalizeDay('yesterday')).toBeNull();
   });
 
   it('rejects an outdated (teacher-only) worker response', () => {

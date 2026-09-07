@@ -23,14 +23,27 @@ export interface SmartUniversityResponse {
   notes?: string;
 }
 
+const DAY_ALIASES: Record<string, DayKey> = {
+  sunday: 'sun', monday: 'mon', tuesday: 'tue', wednesday: 'wed', thursday: 'thu', friday: 'fri', saturday: 'sat',
+  u: 'sun', m: 'mon', t: 'tue', w: 'wed', r: 'thu', f: 'fri', s: 'sat',
+  'الأحد': 'sun', 'الاحد': 'sun', 'الإثنين': 'mon', 'الاثنين': 'mon', 'الثلاثاء': 'tue', 'الأربعاء': 'wed', 'الاربعاء': 'wed', 'الخميس': 'thu', 'الجمعة': 'fri', 'السبت': 'sat',
+};
+
+/** sun | Sunday | U | الأحد → 'sun' (the model is asked for keys, this is a safety net). */
+export function normalizeDay(v: unknown): DayKey | null {
+  const raw = String(v ?? '').trim().toLowerCase();
+  if (DAY_KEYS.includes(raw as DayKey)) return raw as DayKey;
+  return DAY_ALIASES[raw] ?? DAY_ALIASES[raw.slice(0, 3)] ?? null;
+}
+
 /** Normalises the model output: valid days, HH:MM times, deduplicated, sorted. */
 export function smartResponseToLectures(res: SmartUniversityResponse): Lecture[] | null {
   if (!res.ok || !Array.isArray(res.lectures)) return null;
   const out: Lecture[] = [];
   const seen = new Set<string>();
   for (const l of res.lectures) {
-    const day = String(l.day ?? '').toLowerCase() as DayKey;
-    if (!DAY_KEYS.includes(day)) continue;
+    const day = normalizeDay(l.day);
+    if (!day) continue;
     const start = parseTime(String(l.start ?? ''));
     let end = parseTime(String(l.end ?? ''));
     if (start === null) continue;
