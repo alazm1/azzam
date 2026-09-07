@@ -13,7 +13,7 @@ interface Props {
   onConfirm: (title: string, text: string, action: () => void) => void;
 }
 
-/** Review / edit dialog: periods as rows, days as columns, one cell editor. */
+/** Review / edit dialog: days as rows, periods as columns, one cell editor. */
 export function EditDialog({ open, grid, imported, info, onApply, onClose, onConfirm }: Props) {
   const [draft, setDraft] = useState<Grid>(() => cloneGrid(grid));
   const [selected, setSelected] = useState<{ p: number; d: number } | null>(null);
@@ -105,35 +105,36 @@ export function EditDialog({ open, grid, imported, info, onApply, onClose, onCon
       </div>
 
       <div className="overflow-auto rounded-lg border border-line">
-        <table className="w-full min-w-[570px] table-fixed border-collapse text-center">
+        <table className="w-full min-w-[640px] table-fixed border-collapse text-center">
           <thead>
             <tr>
-              <th className="w-16 border border-line bg-canvas px-1 py-3 text-sm font-normal">الحصة</th>
-              {DAYS.slice(0, dayCount).map((d) => (
-                <th key={d} className="border border-line bg-canvas px-1 py-3 text-sm font-normal">
-                  {d}
+              <th className="w-[4.5rem] border border-line bg-canvas px-1 py-3 text-sm font-normal">اليوم</th>
+              {draft.map((_, p) => (
+                <th key={p} className="border border-line bg-canvas px-1 py-3 text-sm font-normal">
+                  {arabic(p + 1)}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {draft.map((row, p) => (
-              <tr key={p}>
-                <th className="border border-line bg-canvas text-sm font-normal">{arabic(p + 1)}</th>
-                {row.map((c, d) => {
+            {DAYS.slice(0, dayCount).map((day, d) => (
+              <tr key={day}>
+                <th className="border border-line bg-canvas px-1 text-sm font-bold">{day}</th>
+                {draft.map((row, p) => {
+                  const c = row[d];
                   const isSel = selected?.p === p && selected?.d === d;
                   const label = c.classroom || c.subject || (c.occupied ? 'تحتاج مراجعة' : '');
                   return (
-                    <td key={d} className="h-16 border border-line p-0">
+                    <td key={p} className="h-16 border border-line p-0">
                       <button
                         type="button"
                         onClick={() => setSelected({ p, d })}
                         aria-label={`${DAYS[d]}، الحصة ${ORDINALS[p]}، ${c.classroom || ''} ${c.subject || 'فارغة'}، تعديل`}
-                        className={`flex h-full min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 py-2 text-xs [overflow-wrap:anywhere] ${isSel ? 'bg-primary-light shadow-[inset_0_0_0_2px_#5d9c80]' : 'hover:bg-primary-light'} ${c.needsReview ? 'bg-warn-light' : ''}`}
+                        className={`flex h-full min-h-16 w-full flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-xs [overflow-wrap:anywhere] ${isSel ? 'bg-primary-light shadow-[inset_0_0_0_2px_#5d9c80]' : 'hover:bg-primary-light'} ${c.needsReview ? 'bg-warn-light' : ''}`}
                       >
-                        {label ? <b className="text-sm font-bold">{label}</b> : <span className="text-lg text-[#80968b]">+</span>}
-                        {c.classroom && c.subject && <span className="text-muted">{c.subject}</span>}
-                        {c.needsReview && <small className="text-[10px] font-bold text-warn">راجع البيانات</small>}
+                        {label ? <b className="text-[13px] font-bold leading-tight">{label}</b> : <span className="text-lg text-[#80968b]">+</span>}
+                        {c.classroom && c.subject && <span className="text-[11px] text-muted">{c.subject}</span>}
+                        {c.needsReview && <small className="text-[10px] font-bold text-warn">راجع</small>}
                       </button>
                     </td>
                   );
