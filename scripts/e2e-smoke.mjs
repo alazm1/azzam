@@ -5,6 +5,7 @@
  *
  *   npm run build && node scripts/e2e-smoke.mjs [fixture]
  */
+import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -66,9 +67,11 @@ try {
     const img = document.querySelector('dialog[open] img');
     const res = await fetch(img.src);
     const blob = await res.blob();
-    return { size: blob.size, type: blob.type };
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    return { size: blob.size, type: blob.type, b64: btoa(Array.from(buf, (b) => String.fromCharCode(b)).join('')) };
   });
-  console.log('exported png:', png);
+  writeFileSync(join(out, 'e2e-wallpaper.png'), Buffer.from(png.b64, 'base64'));
+  console.log('exported png:', { size: png.size, type: png.type });
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('jadwal-almuallim:design:v1') || 'null'));
   console.log('saved: source=', saved?.source, 'periods=', saved?.grid?.length, 'lessons=', saved?.grid?.flat().filter((c) => c.classroom || c.subject).length, 'theme=', saved?.theme);

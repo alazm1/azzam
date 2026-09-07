@@ -1,6 +1,6 @@
 /**
  * Draws the schedule wallpaper on a canvas (phone 1200×2600 or landscape
- * 1920×1280). Days are columns, periods are rows; each class keeps its colour.
+ * 1920×1280). Days are rows (labels on the right), periods are columns; each class keeps its colour.
  */
 import { arabic, classKey, DAYS, getClasses, isFilled, type DesignState, type ThemeKey } from '../models/design';
 
@@ -113,26 +113,27 @@ export function drawSchedule(canvas: HTMLCanvasElement, state: DesignState): Dra
   text(ctx, `${arabic(count)} حصة أسبوعيًا`, W - margin, metaY + 43, 28, t.muted);
   text(ctx, `${DAYS[0]} — ${DAYS[dayCount - 1]}`, margin, metaY + 43, 28, t.muted, { align: 'left' });
 
+  // الأيام صفوف (عناوينها على اليمين) والحصص أعمدة
   const gridTop = metaY + 98;
   const headH = phone ? 87 : 72;
-  const labelW = phone ? 74 : 100;
-  const colW = (usable - labelW) / dayCount;
+  const labelW = phone ? 150 : 170;
+  const colW = (usable - labelW) / Math.max(1, N);
   const gap = phone ? 12 : 15;
-  const maxRowH = phone ? 145 : 101;
+  const maxRowH = phone ? 230 : 150;
   const available = H - gridTop - headH - (phone ? 245 : 105);
-  const rowH = Math.min(maxRowH, Math.floor(available / Math.max(1, N)));
+  const rowH = Math.min(maxRowH, Math.floor(available / Math.max(1, dayCount)));
   round(ctx, margin, gridTop, usable, headH, phone ? 20 : 16, t.bar);
-  text(ctx, 'الحصة', W - margin - labelW / 2, gridTop + headH / 2, phone ? 24 : 25, t.barText, { align: 'center', max: labelW - 12 });
-  for (let d = 0; d < dayCount; d++) {
-    const x = W - margin - labelW - colW * (d + 1);
-    text(ctx, DAYS[d], x + colW / 2, gridTop + headH / 2, phone ? 33 : 31, t.barText, { weight: 700, align: 'center', max: colW - 18 });
-  }
+  text(ctx, 'اليوم', W - margin - labelW / 2, gridTop + headH / 2, phone ? 30 : 28, t.barText, { weight: 700, align: 'center', max: labelW - 12 });
   for (let p = 0; p < N; p++) {
-    const y = gridTop + headH + 14 + p * rowH;
-    text(ctx, arabic(p + 1), W - margin - labelW / 2, y + (rowH - gap) / 2, phone ? 36 : 32, t.muted, { align: 'center' });
-    for (let d = 0; d < dayCount; d++) {
+    const x = W - margin - labelW - colW * (p + 1);
+    text(ctx, arabic(p + 1), x + colW / 2, gridTop + headH / 2, phone ? 36 : 32, t.barText, { weight: 700, align: 'center', max: colW - 12 });
+  }
+  for (let d = 0; d < dayCount; d++) {
+    const y = gridTop + headH + 14 + d * rowH;
+    text(ctx, DAYS[d], W - margin - labelW / 2, y + (rowH - gap) / 2, phone ? 34 : 31, t.ink, { weight: 700, align: 'center', max: labelW - 12 });
+    for (let p = 0; p < N; p++) {
       const cell = state.grid[p][d];
-      const x = W - margin - labelW - colW * (d + 1);
+      const x = W - margin - labelW - colW * (p + 1);
       const filled = isFilled(cell);
       const bg = filled ? colors.get(classKey(cell.classroom)) ?? '#e6e8de' : t.empty;
       round(ctx, x + gap / 2, y, colW - gap, rowH - gap, phone ? 17 : 12, bg);
@@ -143,14 +144,16 @@ export function drawSchedule(canvas: HTMLCanvasElement, state: DesignState): Dra
       const ink = contrastInk(bg);
       const primary = cell.classroom || (state.showSubject ? cell.subject : 'حصة') || (cell.occupied ? 'تحتاج مراجعة' : '');
       const hasSub = state.showSubject && !!cell.classroom && !!cell.subject;
-      const f = Math.min(phone ? 34 : 31, Math.floor((rowH - gap) / (hasSub ? 3.25 : 2.35)));
-      const lines = wrap(ctx, primary, colW - 30, f, 2);
-      const cy = y + (rowH - gap) / 2 - ((lines.length - 1) * f * 1.16 + (hasSub ? f * 0.95 : 0)) / 2;
-      for (let i = 0; i < lines.length; i++) text(ctx, lines[i], x + colW / 2, cy + i * f * 1.16, f, ink, { weight: 700, align: 'center', max: colW - 25 });
-      if (hasSub) text(ctx, cell.subject, x + colW / 2, cy + (lines.length - 1) * f * 1.16 + f * 0.95, Math.min(phone ? 24 : 22, Math.floor(f * 0.75)), ink, { align: 'center', max: colW - 30 });
+      const innerH = rowH - gap;
+      const f = Math.min(phone ? 34 : 30, Math.floor(innerH / (hasSub ? 4.2 : 3.2)), Math.floor(colW / 3.6));
+      const lines = wrap(ctx, primary, colW - 22, f, 3);
+      const block = (lines.length - 1) * f * 1.16 + (hasSub ? f * 0.95 : 0);
+      const cy = y + innerH / 2 - block / 2;
+      for (let i = 0; i < lines.length; i++) text(ctx, lines[i], x + colW / 2, cy + i * f * 1.16, f, ink, { weight: 700, align: 'center', max: colW - 18 });
+      if (hasSub) text(ctx, cell.subject, x + colW / 2, cy + (lines.length - 1) * f * 1.16 + f * 0.95, Math.min(phone ? 24 : 22, Math.floor(f * 0.78)), ink, { align: 'center', max: colW - 20 });
     }
   }
-  const bottom = gridTop + headH + 14 + N * rowH;
+  const bottom = gridTop + headH + 14 + dayCount * rowH;
   ctx.fillStyle = t.line;
   ctx.fillRect(margin, bottom + 32, usable, 2);
   text(ctx, 'جدول الأسبوع', W - margin, bottom + 77, phone ? 29 : 26, t.muted);
