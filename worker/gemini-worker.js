@@ -36,7 +36,7 @@ const SCHEMA = {
 const PROMPT = `هذه صورة جدول حصص لمعلم في مدرسة سعودية. استخرج كل الحصص بدقة.
 - حدد محور الأيام (الأحد=sun، الاثنين=mon، الثلاثاء=tue، الأربعاء=wed، الخميس=thu) ومحور الحصص (الأولى=1 … الثامنة=8) من عناوين الجدول، سواء كانت الأيام في الصفوف أو في الأعمدة. إن غابت أرقام الحصص فاستنتجها من ترتيب الأعمدة أو الأوقات (الأبكر = الحصة 1).
 - className: الفصل/الشعبة كما هو مكتوب بالضبط مع توحيد الشكل مثل "٢/ب" أو "ثاني/١" أو "ثالث ابتدائي/٢" أو "أول متوسط أ". حصص الانتظار تُكتب "منتظر ١".
-- subject: اسم المادة أو الدرس إن وُجد، وإلا اتركه فارغًا. لا تضع أوقاتًا ولا كلمات مثل "محضرة" أو "طباعة وتنزيل".
+- subject: اسم المادة الدراسية القصير فقط (مثل "رياضيات"، "لغتي"، "علوم"، "إنجليزي"، "قرآن"، "تربية بدنية") إن ظهر في الصورة. إذا ظهر عنوان درس بدل اسم المادة (مثل "حل أنظمة المتباينات") فاستنتج اسم المادة منه إن كان واضحًا (رياضيات)، وإلا اتركه فارغًا. لا تضع عناوين دروس طويلة، ولا أوقاتًا، ولا كلمات مثل "محضرة" أو "طباعة وتنزيل".
 - الخانات الفارغة لا تُذكر. لا تخترع حصصًا غير ظاهرة.
 أعد JSON فقط.`;
 
@@ -77,15 +77,21 @@ export default {
       generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: SCHEMA },
     };
 
+    // إعادة المحاولة عند ضغط النموذج (503/429) قبل الاستسلام
     let upstream;
-    try {
-      upstream = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-        body: JSON.stringify(payload),
-      });
-    } catch (e) {
-      return json({ error: 'upstream-unreachable', detail: String(e) }, 502, cors);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      try {
+        upstream = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+          body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        if (attempt === 2) return json({ error: 'upstream-unreachable', detail: String(e) }, 502, cors);
+        continue;
+      }
+      if (upstream.status !== 503 && upstream.status !== 429) break;
     }
     if (upstream.status === 429) return json({ error: 'quota' }, 429, cors);
     if (!upstream.ok) {
