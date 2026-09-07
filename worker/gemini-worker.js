@@ -83,6 +83,12 @@ const UNIVERSITY_PROMPT = `هذه صورة جدول محاضرات لطالب ج
 - المحاضرة الممتدة على عدة صفوف تُذكر مرة واحدة بوقتها الكامل. لا تخترع محاضرات غير ظاهرة.
 أعد JSON فقط.`;
 
+/** نماذج احتياطية تُجرَّب عند امتلاء حصة النموذج الأساسي أو انشغاله. */
+function fallbackModels(env) {
+  const raw = env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash-lite,gemini-3.5-flash,gemini-3.5-flash-lite';
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
 }
@@ -98,7 +104,16 @@ export default {
       'Access-Control-Max-Age': '86400',
     };
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'jadwal-smart-reader', model: env.GEMINI_MODEL || 'gemini-3.6-flash', configured: !!env.GEMINI_API_KEY }, 200, cors);
+    if (request.method === 'GET') {
+      const info = { ok: true, service: 'jadwal-smart-reader', model: env.GEMINI_MODEL || 'gemini-3.6-flash', fallback: fallbackModels(env), configured: !!env.GEMINI_API_KEY };
+      // ?models=1 يعرض أسماء النماذج المتاحة للمفتاح (أسماء فقط، بلا مفاتيح)
+      if (new URL(request.url).searchParams.has('models') && env.GEMINI_API_KEY) {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', { headers: { 'x-goog-api-key': env.GEMINI_API_KEY } }).catch(() => null);
+        const d = r && r.ok ? await r.json() : null;
+        info.models = d && Array.isArray(d.models) ? d.models.filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace('models/', '')) : null;
+      }
+      return json(info, 200, cors);
+    }
     if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405, cors);
     if (allowed && origin && !allowed.includes(origin)) return json({ error: 'origin-not-allowed' }, 403, cors);
     if (!env.GEMINI_API_KEY) return json({ error: 'not-configured' }, 500, cors);
@@ -113,30 +128,39 @@ export default {
     const university = mode === 'university';
     if (typeof image !== 'string' || image.length < 100 || image.length > 8_000_000) return json({ error: 'bad-image' }, 400, cors);
     const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(mime) ? mime : 'image/jpeg';
-    const model = env.GEMINI_MODEL || 'gemini-3.6-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-
+    const primary = env.GEMINI_MODEL || 'gemini-3.6-flash';
+    const candidates = [primary, ...fallbackModels(env).filter((m) => m !== primary)];
     const payload = {
       contents: [{ role: 'user', parts: [{ text: university ? UNIVERSITY_PROMPT : PROMPT }, { inline_data: { mime_type: mimeType, data: image } }] }],
       generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: university ? UNIVERSITY_SCHEMA : SCHEMA },
     };
 
-    // إعادة المحاولة عند ضغط النموذج (503/429) قبل الاستسلام
-    let upstream;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
-      try {
-        upstream = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-          body: JSON.stringify(payload),
-        });
-      } catch (e) {
-        if (attempt === 2) return json({ error: 'upstream-unreachable', detail: String(e) }, 502, cors);
-        continue;
+    // النموذج الأساسي أولًا مع إعادة المحاولة عند الضغط (503/429)، ثم النماذج الاحتياطية
+    let upstream = null;
+    let model = primary;
+    for (const candidate of candidates) {
+      model = candidate;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:generateContent`;
+      const tries = candidate === primary ? 3 : 1;
+      for (let attempt = 0; attempt < tries; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+        try {
+          upstream = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) {
+          upstream = null;
+          continue;
+        }
+        if (upstream.status !== 503 && upstream.status !== 429) break;
       }
-      if (upstream.status !== 503 && upstream.status !== 429) break;
+      // نموذج غير موجود (404) أو ما زال مشغولًا → جرّب التالي
+      if (upstream && upstream.ok) break;
+      if (upstream && upstream.status !== 404 && upstream.status !== 429 && upstream.status !== 503) break;
     }
+    if (!upstream) return json({ error: 'upstream-unreachable' }, 502, cors);
     if (upstream.status === 429) return json({ error: 'quota' }, 429, cors);
     if (!upstream.ok) {
       const detail = await upstream.text().catch(() => '');
