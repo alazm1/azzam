@@ -95,7 +95,7 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
       {smartAvailable ? (
         <div className="mt-4 rounded-xl border border-line bg-surface p-3">
           <label htmlFor="smart-reader" className="flex cursor-pointer items-center justify-between gap-3 text-sm font-bold">
-            <span>القراءة الذكية (أدق، عبر الإنترنت)</span>
+            <span>القراءة الذكية</span>
             <input
               id="smart-reader"
               type="checkbox"
@@ -109,11 +109,6 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
             />
             <span aria-hidden="true" className="relative block h-[21px] w-9 shrink-0 rounded-full bg-[#c9d5d0] transition-colors peer-checked:bg-primary after:absolute after:left-[3px] after:top-[3px] after:h-[15px] after:w-[15px] after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-[15px]" />
           </label>
-          <p className="mt-1 text-xs leading-6 text-muted">
-            {smartOn
-              ? 'تُرسل الصورة إلى خدمة Google Gemini للقراءة فقط ولا تُحفظ لدينا. في الخدمة المجانية قد تستخدم Google المحتوى لتحسين خدماتها؛ أوقف هذا الخيار إن أردت القراءة على جهازك فقط.'
-              : 'تُقرأ الصور داخل جهازك فقط. القراءة الذكية أدق على لقطات الشاشة الصغيرة.'}
-          </p>
         </div>
       ) : (
         <p className="mt-4 text-center text-xs text-muted">✓ تُقرأ الصور داخل جهازك ولا تُرفع إلى خادم</p>

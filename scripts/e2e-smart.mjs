@@ -34,7 +34,7 @@ await page.route(WORKER, (route) => {
 });
 try {
   await page.goto(`http://localhost:${port}/`);
-  await page.getByLabel('القراءة الذكية (أدق، عبر الإنترنت)').waitFor();
+  await page.getByLabel('القراءة الذكية').waitFor();
   const upload = async (fixture) => {
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'تصوير الجدول أو اختيار صورة' }).click()]);
     await chooser.setFiles(join(root, 'tests', 'fixtures', fixture));
