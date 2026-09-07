@@ -7,7 +7,7 @@
  *
  * المتغيرات:
  *   GEMINI_API_KEY  (سري)   مفتاح Google AI Studio
- *   GEMINI_MODEL    (اختياري) الافتراضي gemini-2.5-flash
+ *   GEMINI_MODEL    (اختياري) الافتراضي gemini-3.6-flash
  *   ALLOWED_ORIGIN  (اختياري) مثال https://alazm1.github.io — يقيّد الاستخدام على موقعك
  */
 
@@ -55,7 +55,7 @@ export default {
       'Access-Control-Max-Age': '86400',
     };
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'jadwal-smart-reader', model: env.GEMINI_MODEL || 'gemini-2.5-flash', configured: !!env.GEMINI_API_KEY }, 200, cors);
+    if (request.method === 'GET') return json({ ok: true, service: 'jadwal-smart-reader', model: env.GEMINI_MODEL || 'gemini-3.6-flash', configured: !!env.GEMINI_API_KEY }, 200, cors);
     if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405, cors);
     if (allowed && origin && !allowed.includes(origin)) return json({ error: 'origin-not-allowed' }, 403, cors);
     if (!env.GEMINI_API_KEY) return json({ error: 'not-configured' }, 500, cors);
@@ -69,7 +69,7 @@ export default {
     const { image, mime } = body || {};
     if (typeof image !== 'string' || image.length < 100 || image.length > 8_000_000) return json({ error: 'bad-image' }, 400, cors);
     const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(mime) ? mime : 'image/jpeg';
-    const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = env.GEMINI_MODEL || 'gemini-3.6-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
     const payload = {
