@@ -94,11 +94,13 @@ export function smartResponseToResult(res: SmartResponse, startedAt: number): Ex
     const parsed = rawClass && !waiting ? parseClassName(norm, true) : null;
     const subjectRaw = String(l.subject ?? '').trim();
     const subjectMatch = subjectRaw ? matchSubject(normalizeArabic(subjectRaw)) : null;
+    // المطلوب اسم المادة فقط؛ عناوين الدروس الطويلة (٣ كلمات فأكثر) تُهمل
+    const shortSubject = subjectRaw && subjectRaw.split(/\s+/).length <= 2 && subjectRaw.length <= 16 ? subjectRaw : undefined;
     lessons.push({
       day,
       period: l.period,
       className: waiting ?? parsed?.className ?? rawClass,
-      subject: subjectMatch?.subject ?? (subjectRaw || undefined),
+      subject: subjectMatch?.subject ?? shortSubject,
       rawText: [rawClass, subjectRaw].filter(Boolean).join('\n'),
       confidence: 0.9,
       source: { row: 0, col: 0 },

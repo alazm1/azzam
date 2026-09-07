@@ -25,7 +25,7 @@ describe('smartResponseToResult', () => {
     expect(at('sun', 1)?.className).toBe('٢/ب');
     expect(at('sun', 1)?.subject).toBe('رياضيات');
     expect(at('sun', 3)?.className).toBe('ثاني/١');
-    expect(at('sun', 3)?.subject).toContain('حل أنظمة');
+    expect(at('sun', 3)?.subject).toBeUndefined(); // عنوان درس وليس مادة
     expect(at('mon', 2)?.className).toBe('ثالث ابتدائي/٢');
     expect(at('mon', 2)?.subject).toBe('لغة إنجليزية');
     expect(at('tue', 4)?.className).toBe('منتظر ١');
