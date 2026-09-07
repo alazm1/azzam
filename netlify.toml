@@ -1,0 +1,12 @@
+# استضافة Netlify: يكفي ربط المستودع وسيقرأ هذه الإعدادات تلقائيًا
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
