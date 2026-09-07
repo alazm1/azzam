@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { resolve } from 'node:path';
 
 const base = process.env.BASE_PATH ?? '/';
 
@@ -52,6 +53,10 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: false,
+    rollupOptions: {
+      // نسختان: المعلم (الجذر) والطالب الجامعي (/student/)
+      input: { main: resolve(__dirname, 'index.html'), student: resolve(__dirname, 'student/index.html') },
+    },
   },
   test: {
     environment: 'node',

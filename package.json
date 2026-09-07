@@ -17,7 +17,8 @@
     "e2e": "node scripts/e2e-smoke.mjs",
     "icons": "node scripts/gen-icons.mjs",
     "glyph-atlas": "node scripts/gen-glyph-atlas.mjs",
-    "e2e:smart": "node scripts/e2e-smart.mjs"
+    "e2e:smart": "node scripts/e2e-smart.mjs",
+    "e2e:student": "node scripts/e2e-student.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

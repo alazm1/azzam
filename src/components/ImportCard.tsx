@@ -15,10 +15,14 @@ interface Props {
   previews: string[];
   onFiles: (files: File[]) => void;
   onReview: () => void;
+  /** Copy overrides (the student edition reuses this card). */
+  description?: string;
+  hints?: [string, string];
+  reviewLabel?: string;
 }
 
 /** Step 1 — photograph or pick the schedule image(s). */
-export function ImportCard({ progress, error, canReview, previews, onFiles, onReview }: Props) {
+export function ImportCard({ progress, error, canReview, previews, onFiles, onReview, description, hints, reviewLabel }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [smartAvailable, setSmartAvailable] = useState(false);
   const [smartOn, setSmartOn] = useState(() => smartReaderEnabled());
@@ -31,7 +35,7 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
         <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#c9d9d2] text-sm text-primary">١</span>
         <h2 className="text-lg font-bold">صوّر جدولك</h2>
       </div>
-      <p className="mb-4 text-sm leading-7 text-muted">ارفع صورة جدولك الورقي أو الإلكتروني. يحدد القارئ الأيام والحصص من عناوينها، ثم يعرض الخانات للمراجعة قبل الحفظ.</p>
+      <p className="mb-4 text-sm leading-7 text-muted">{description ?? 'ارفع صورة جدولك الورقي أو الإلكتروني. يحدد القارئ الأيام والحصص من عناوينها، ثم يعرض الخانات للمراجعة قبل الحفظ.'}</p>
       <button type="button" className="btn-primary w-full" onClick={() => input.current?.click()} disabled={!!progress?.active}>
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <path d="M4 7h3l1.5-2h7L17 7h3v12H4V7Z" />
@@ -52,8 +56,8 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
         }}
       />
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <span>✓ جدول إلكتروني أو ورقي</span>
-        <span>✓ العناوين ظاهرة والنص واضح</span>
+        <span>✓ {hints?.[0] ?? 'جدول إلكتروني أو ورقي'}</span>
+        <span>✓ {hints?.[1] ?? 'العناوين ظاهرة والنص واضح'}</span>
       </div>
 
       {previews.length > 0 && (
@@ -89,7 +93,7 @@ export function ImportCard({ progress, error, canReview, previews, onFiles, onRe
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
             <path d="m15 4 5 5L9 20H4v-5L15 4ZM13 6l5 5" />
           </svg>
-          مراجعة الجدول المقروء
+          {reviewLabel ?? 'مراجعة الجدول المقروء'}
         </button>
       )}
       {smartAvailable ? (

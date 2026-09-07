@@ -20,9 +20,9 @@ export const THEMES: Record<ThemeKey, Theme> = {
   paper: { bg: '#ffffff', ink: '#203d34', muted: '#758579', line: '#dae4de', empty: '#f1f5f2', bar: '#233f35', barText: '#ffffff' },
 };
 
-const FONT = "'Thmanyah', Tahoma, Arial, sans-serif";
+export const FONT = "'Thmanyah', Tahoma, Arial, sans-serif";
 
-function round(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string) {
+export function round(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
   ctx.fillStyle = fill;
@@ -33,11 +33,13 @@ interface TextOpts {
   weight?: number;
   align?: CanvasTextAlign;
   max?: number;
+  /** Time ranges are written left-to-right (start on the left) as in university grids. */
+  dir?: CanvasDirection;
 }
 
-function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, { weight = 400, align = 'right', max }: TextOpts = {}) {
+export function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, { weight = 400, align = 'right', max, dir = 'rtl' }: TextOpts = {}) {
   ctx.font = `${weight} ${size}px ${FONT}`;
-  ctx.direction = 'rtl';
+  ctx.direction = dir;
   ctx.textAlign = align;
   ctx.textBaseline = 'middle';
   ctx.fillStyle = color;
@@ -52,7 +54,7 @@ function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, si
   } else ctx.fillText(value, x, y);
 }
 
-function wrap(ctx: CanvasRenderingContext2D, value: string, maxWidth: number, fontSize: number, maxLines = 2): string[] {
+export function wrap(ctx: CanvasRenderingContext2D, value: string, maxWidth: number, fontSize: number, maxLines = 2): string[] {
   ctx.font = `700 ${fontSize}px ${FONT}`;
   const words = String(value).split(/\s+/);
   const lines: string[] = [];

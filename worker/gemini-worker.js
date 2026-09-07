@@ -5,6 +5,9 @@
  * الحصص كبيانات منظمة. المفتاح يبقى هنا فقط (متغير سري GEMINI_API_KEY)
  * ولا يظهر أبدًا في كود الموقع. لا تُحفظ الصور ولا النتائج.
  *
+ * الطلب: { image, mime, mode? } — mode = "university" لجداول طلاب الجامعة
+ * (محاضرات بأوقات) بدل جدول حصص المعلم.
+ *
  * المتغيرات:
  *   GEMINI_API_KEY  (سري)   مفتاح Google AI Studio
  *   GEMINI_MODEL    (اختياري) الافتراضي gemini-3.6-flash
@@ -40,6 +43,38 @@ const PROMPT = `هذه صورة جدول حصص لمعلم في مدرسة سع�
 - الخانات الفارغة لا تُذكر. لا تخترع حصصًا غير ظاهرة.
 أعد JSON فقط.`;
 
+const UNIVERSITY_SCHEMA = {
+  type: 'object',
+  properties: {
+    lectures: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          day: { type: 'string', enum: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] },
+          start: { type: 'string', description: 'وقت البداية بصيغة 24 ساعة HH:MM' },
+          end: { type: 'string', description: 'وقت النهاية بصيغة 24 ساعة HH:MM' },
+          course: { type: 'string' },
+          room: { type: 'string' },
+          uncertain: { type: 'boolean' },
+        },
+        required: ['day', 'start', 'end', 'course'],
+      },
+    },
+    notes: { type: 'string' },
+  },
+  required: ['lectures'],
+};
+
+const UNIVERSITY_PROMPT = `هذه صورة جدول محاضرات لطالب جامعي في السعودية (مثل أنظمة البانر أو بوابة الجامعة). استخرج كل المحاضرات بدقة.
+- day: يوم المحاضرة من عناوين الأعمدة أو الصفوف (الأحد=sun، الاثنين=mon، الثلاثاء=tue، الأربعاء=wed، الخميس=thu، الجمعة=fri، السبت=sat).
+- start و end: وقت البداية والنهاية بصيغة 24 ساعة "HH:MM". حوّل الصيغ المختلفة: "8.0-9.50" تعني 08:00 إلى 09:50، "1:00 م-2:40 م" تعني 13:00 إلى 14:40، "10:15 AM-11:05 AM" تعني 10:15 إلى 11:05، وكل وقت بعد الظهر مسبوق بـ "م" أو "PM" أو "مساءً" يُضاف إليه 12. إذا لم يُكتب وقت داخل الخلية فاستنتجه من صف الساعة الذي تبدأ فيه الخلية وعدد الصفوف التي تمتد عليها.
+- course: رمز المقرر واسمه المختصر كما هو مكتوب (مثل "101 تقن"، "طفل 3K4-220"، "قصد 414-3"، "حسب 5-431"). لا تضف أرقام الشعب الطويلة مثل "Class 11059" ولا كلمة "محاضرة".
+- room: القاعة أو المبنى إن ظهر (مثل "0.229 1.1.2" أو "322 عن بعد")، وإلا اتركه فارغًا.
+- uncertain: true فقط إذا كان النص غير واضح.
+- المحاضرة الواحدة التي تمتد على عدة صفوف ساعات تُذكر مرة واحدة فقط. لا تخترع محاضرات غير ظاهرة، وتجاهل الخلايا الفارغة.
+أعد JSON فقط.`;
+
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
 }
@@ -66,15 +101,16 @@ export default {
     } catch {
       return json({ error: 'bad-request' }, 400, cors);
     }
-    const { image, mime } = body || {};
+    const { image, mime, mode } = body || {};
+    const university = mode === 'university';
     if (typeof image !== 'string' || image.length < 100 || image.length > 8_000_000) return json({ error: 'bad-image' }, 400, cors);
     const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(mime) ? mime : 'image/jpeg';
     const model = env.GEMINI_MODEL || 'gemini-3.6-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
     const payload = {
-      contents: [{ role: 'user', parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: image } }] }],
-      generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: SCHEMA },
+      contents: [{ role: 'user', parts: [{ text: university ? UNIVERSITY_PROMPT : PROMPT }, { inline_data: { mime_type: mimeType, data: image } }] }],
+      generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: university ? UNIVERSITY_SCHEMA : SCHEMA },
     };
 
     // إعادة المحاولة عند ضغط النموذج (503/429) قبل الاستسلام
@@ -105,6 +141,10 @@ export default {
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
     } catch {
       return json({ error: 'unparseable', text: text.slice(0, 500) }, 502, cors);
+    }
+    if (university) {
+      const lectures = Array.isArray(parsed.lectures) ? parsed.lectures.filter((l) => l && typeof l.day === 'string' && typeof l.start === 'string').slice(0, 120) : [];
+      return json({ ok: true, model, lectures, notes: parsed.notes ?? '' }, 200, cors);
     }
     const lessons = Array.isArray(parsed.lessons) ? parsed.lessons.filter((l) => l && typeof l.day === 'string' && Number.isInteger(l.period)).slice(0, 120) : [];
     return json({ ok: true, model, periodsCount: parsed.periodsCount ?? null, lessons, notes: parsed.notes ?? '' }, 200, cors);
