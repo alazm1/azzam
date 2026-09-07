@@ -1,5 +1,5 @@
 /** Hit counter badge served by hits.sh (count only, no label). Increments on every page load. */
-const COUNTER_SRC = 'https://hits.sh/jadwal-almuallim.svg?label=%20&color=0c574d&style=flat-square';
+const COUNTER_SRC = 'https://hits.sh/jadwal-almuallim.app.svg?label=%20&color=0c574d&style=flat-square';
 
 export function Footer() {
   return (
