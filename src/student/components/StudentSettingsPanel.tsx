@@ -1,4 +1,7 @@
 import { Switch, THEME_TILES } from '../../components/SettingsPanel';
+
+/** The student edition adds a fourth, pink theme. */
+const STUDENT_THEME_TILES = [...THEME_TILES, { key: 'rose' as const, label: 'وردي', bg: '#fdf0f6', bars: ['#f5a9c9', '#e6c3ef', '#f9d38b'] }];
 import type { FormatKey } from '../../models/design';
 import { arabic, getCourses, type StudentState } from '../model';
 
@@ -30,11 +33,11 @@ export function StudentSettingsPanel({ state, onChange }: Props) {
       </div>
       <fieldset className="mb-5">
         <legend className="mb-2.5 text-sm">طابع التصميم</legend>
-        <div className="grid grid-cols-3 gap-3">
-          {THEME_TILES.map((t) => (
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+          {STUDENT_THEME_TILES.map((t) => (
             <label key={t.key} className="flex cursor-pointer flex-col items-center gap-1.5 text-xs">
               <input type="radio" name="theme" value={t.key} className="peer sr-only" checked={state.theme === t.key} onChange={() => onChange({ theme: t.key })} />
-              <span className="flex h-[68px] w-full items-end justify-center gap-1.5 rounded-lg border-[3px] border-transparent p-3 shadow-[0_0_0_1px_#e1e7e4] peer-checked:border-white peer-checked:shadow-[0_0_0_2px_var(--color-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-primary" style={{ background: t.bg }}>
+              <span className="flex h-[68px] w-full items-end justify-center gap-1 rounded-lg border-[3px] border-transparent p-2.5 shadow-[0_0_0_1px_#e1e7e4] peer-checked:border-white peer-checked:shadow-[0_0_0_2px_var(--color-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-primary" style={{ background: t.bg }}>
                 <i className="block h-6 w-5 rounded-sm" style={{ background: t.bars[0] }} />
                 <i className="block h-8 w-5 rounded-sm" style={{ background: t.bars[1] }} />
                 <i className="block h-5 w-5 rounded-sm" style={{ background: t.bars[2] }} />

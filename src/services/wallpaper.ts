@@ -18,6 +18,8 @@ export const THEMES: Record<ThemeKey, Theme> = {
   green: { bg: '#eaf3ee', ink: '#0e4c40', muted: '#5e8171', line: '#c5d9cd', empty: '#e2ece5', bar: '#0e4c40', barText: '#f1f8f1' },
   night: { bg: '#112e29', ink: '#eef6ed', muted: '#9bb7a9', line: '#38564c', empty: '#1b3931', bar: '#cce998', barText: '#15352d' },
   paper: { bg: '#ffffff', ink: '#203d34', muted: '#758579', line: '#dae4de', empty: '#f1f5f2', bar: '#233f35', barText: '#ffffff' },
+  // طابع وردي (نسخة الطلاب)
+  rose: { bg: '#fdf0f6', ink: '#6b2347', muted: '#a8688a', line: '#f1cfe0', empty: '#f9e2ed', bar: '#c9407e', barText: '#fff6fa' },
 };
 
 export const FONT = "'Thmanyah', Tahoma, Arial, sans-serif";

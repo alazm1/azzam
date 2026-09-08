@@ -65,6 +65,7 @@ try {
   await page.getByRole('button', { name: 'إضافة' }).click();
   await page.getByRole('button', { name: 'اعتماد الجدول' }).click();
   await page.getByText('تمت مراجعته').waitFor();
+  await page.getByText('وردي', { exact: true }).click();
   await page.screenshot({ path: join(out, 'e2e-student-preview.png'), fullPage: true });
   await page.getByRole('button', { name: /حفظ الصورة/ }).click();
   await page.getByRole('heading', { name: 'صورتك جاهزة' }).waitFor();

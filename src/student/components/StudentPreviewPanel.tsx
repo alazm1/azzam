@@ -52,7 +52,7 @@ export function StudentPreviewPanel({ state, canvasRef }: Props) {
         <div className={`relative overflow-hidden bg-[#e8f2ed] shadow-[0_18px_48px_#173b3120,0_0_0_1px_#173b3118] ${landscape ? 'w-full rounded-xl' : 'w-[min(100%,290px)] rounded-[17px]'}`}>
           <canvas ref={canvasRef} width={1200} height={2600} className="block h-auto w-full" role="img" aria-label="معاينة الجدول الجامعي. تتوفر المحاضرات كنص في زر تعديل المحاضرات." />
           {!landscape && state.clock && (
-            <div className={`pointer-events-none absolute left-0 top-[6.8%] flex w-full flex-col items-center ${state.theme === 'night' ? 'text-[#deeee57a]' : 'text-[#0a4b4075]'}`} aria-hidden="true">
+            <div className={`pointer-events-none absolute left-0 top-[6.8%] flex w-full flex-col items-center ${state.theme === 'night' ? 'text-[#deeee57a]' : state.theme === 'rose' ? 'text-[#6b234775]' : 'text-[#0a4b4075]'}`} aria-hidden="true">
               <span className="text-[11px]">مساحة الساعة</span>
               <strong className="text-5xl font-bold leading-snug">٩:٤١</strong>
             </div>

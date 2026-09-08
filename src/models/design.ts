@@ -10,7 +10,7 @@ export const PALETTE = ['#8fd3ad', '#93b4f2', '#f6c65a', '#f29bbd', '#7fd0d6', '
 
 export const arabic = toArabicDigits;
 
-export type ThemeKey = 'green' | 'night' | 'paper';
+export type ThemeKey = 'green' | 'night' | 'paper' | 'rose';
 export type FormatKey = 'phone' | 'landscape';
 
 export interface Cell {
