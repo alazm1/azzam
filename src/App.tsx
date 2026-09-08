@@ -210,7 +210,7 @@ export function App() {
             <PreviewPanel state={state} canvasRef={canvasRef} />
           </div>
         </div>
-        <Footer alt={{ href: 'student/', label: 'نسخة الطلاب الجامعيين' }} />
+        <Footer />
       </main>
 
       <EditDialog open={edit.open} grid={state.grid} imported={edit.imported} info={info} onApply={applyGrid} onClose={() => setEdit({ open: false, imported: false })} onConfirm={(title, text, action) => setConfirmation({ title, text, action })} />

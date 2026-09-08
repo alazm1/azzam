@@ -20,8 +20,6 @@ const UNAVAILABLE: Record<string, string> = {
   AbortError: 'استغرقت القراءة وقتًا طويلًا. جرّب صورة أصغر أو أعد المحاولة.',
 };
 
-const teacherHref = `${(import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'}`;
-
 export function StudentApp() {
   const [state, setState] = useState<StudentState>(() => loadStudentDesign() ?? defaultStudentState());
   const [progress, setProgress] = useState<ReadProgress | null>(null);
@@ -195,7 +193,7 @@ export function StudentApp() {
             <StudentPreviewPanel state={state} canvasRef={canvasRef} />
           </div>
         </div>
-        <Footer brand="جدولي الجامعي" tagline="مساحة أجمل ليومك الجامعي" counter="jadwal-jamiah.app" alt={{ href: teacherHref, label: 'نسخة المعلمين' }} />
+        <Footer brand="جدولي الجامعي" tagline="مساحة أجمل ليومك الجامعي" counter="jadwal-jamiah.app" />
       </main>
 
       <LectureDialog open={edit.open} lectures={state.lectures} imported={edit.imported} notes={edit.imported ? notes : undefined} onApply={applyLectures} onClose={() => setEdit({ open: false, imported: false })} onConfirm={(title, text, action) => setConfirmation({ title, text, action })} />

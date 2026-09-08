@@ -5,22 +5,15 @@ interface Props {
   brand?: string;
   tagline?: string;
   counter?: string;
-  /** Link to the sibling edition (teachers ↔ students). */
-  alt?: { href: string; label: string };
 }
 
-export function Footer({ brand = 'جدول المعلم', tagline = 'مساحة أجمل ليومك الدراسي', counter = 'jadwal-almuallim.app', alt }: Props) {
+export function Footer({ brand = 'جدول المعلم', tagline = 'مساحة أجمل ليومك الدراسي', counter = 'jadwal-almuallim.app' }: Props) {
   const COUNTER_SRC = counterSrc(counter);
   return (
     <footer className="mt-8 flex flex-col gap-2 px-1 py-6 text-center text-xs leading-7 text-muted md:flex-row md:justify-between md:text-start">
       <span>
         {brand} <span className="mx-2 text-[#bac7c0]">/</span> {tagline}
       </span>
-      {alt && (
-        <a href={alt.href} className="font-bold text-primary underline-offset-4 hover:underline">
-          {alt.label}
-        </a>
-      )}
       <span>أداة مستقلة، غير تابعة لمنصة مدرستي</span>
       <span className="inline-flex items-center justify-center gap-1.5 md:justify-start">
         <span>عدد الزوار</span>
