@@ -88,7 +88,7 @@ const UNIVERSITY_PROMPT = `هذه صورة جدول محاضرات لطالب ج
 
 /** نماذج احتياطية تُجرَّب عند امتلاء حصة النموذج الأساسي أو انشغاله. */
 function fallbackModels(env) {
-  const raw = env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash-lite,gemini-3.5-flash,gemini-3.5-flash-lite';
+  const raw = env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite';
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 

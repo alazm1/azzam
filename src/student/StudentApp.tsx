@@ -15,7 +15,7 @@ import { drawStudentSchedule } from './wallpaper';
 
 const UNAVAILABLE: Record<string, string> = {
   'not-configured': 'القراءة الذكية غير مفعّلة على هذا الموقع. أضف محاضراتك من «تعديل المحاضرات».',
-  quota: 'اكتملت حصة القراءة الذكية لهذا اليوم. حاول لاحقًا أو أضف محاضراتك يدويًا.',
+  quota: 'خدمة القراءة مشغولة الآن (حد الطلبات في الدقيقة). انتظر دقيقة ثم أعد المحاولة، أو أضف محاضراتك يدويًا.',
   'worker-outdated': 'خادم القراءة يحتاج تحديثًا ليدعم جداول الجامعة. أضف محاضراتك يدويًا مؤقتًا.',
   AbortError: 'استغرقت القراءة وقتًا طويلًا. جرّب صورة أصغر أو أعد المحاولة.',
 };
@@ -67,7 +67,13 @@ export function StudentApp() {
         for (let index = 0; index < files.length; index++) {
           const part = files.length > 1 ? ` · الصورة ${arabic(index + 1)} من ${arabic(files.length)}` : '';
           setProgress({ percent: 10 + (index / files.length) * 80, status: 'القراءة الذكية للجدول…' + part, active: true });
-          const outcome = await readUniversitySchedule(files[index]);
+          let outcome = await readUniversitySchedule(files[index]);
+          if (outcome.kind === 'unavailable' && outcome.reason === 'quota') {
+            // حد الطلبات في الدقيقة: محاولة ثانية تلقائية بعد مهلة قصيرة
+            setProgress({ percent: 30, status: 'الخدمة مشغولة، إعادة المحاولة خلال لحظات…' + part, active: true });
+            await new Promise((r) => window.setTimeout(r, 20_000));
+            outcome = await readUniversitySchedule(files[index]);
+          }
           if (outcome.kind === 'unavailable') throw new Error(UNAVAILABLE[outcome.reason] ?? 'تعذر الوصول إلى خادم القراءة. تأكد من الاتصال بالإنترنت ثم أعد المحاولة.');
           for (const l of outcome.lectures) if (!all.some((x) => x.day === l.day && x.start === l.start && x.course === l.course)) all.push(l);
           if (outcome.notes) noteText = outcome.notes;
