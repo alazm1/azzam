@@ -27,8 +27,8 @@ jobs:
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          # teacher | student | both — انظر vite.config.ts
-          SITE: ${{ vars.SITE || 'both' }}
+          # هذا المستودع لموقع المعلمين فقط؛ موقع الطلاب في مستودع jadwal-jamiah
+          SITE: teacher
       - uses: actions/configure-pages@v5
         with:
           enablement: true

@@ -11,7 +11,7 @@ const base = process.env.BASE_PATH ?? '/';
  * الجامعي فقط، يُنشر في جذر الموقع)، أو 'both' (الافتراضي مؤقتًا: المعلم في
  * الجذر والطالب في /student/). الموقعان مستقلان بلا روابط بينهما.
  */
-const site = process.env.SITE ?? 'both';
+const site = process.env.SITE ?? 'teacher';
 const studentOnly = site === 'student';
 const inputs: Record<string, string> = {};
 if (site !== 'student') inputs.main = resolve(__dirname, 'index.html');
