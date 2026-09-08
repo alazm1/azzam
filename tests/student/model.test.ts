@@ -49,7 +49,7 @@ describe('university smart reader', () => {
   });
 
   it('accepts day names and letter codes as a safety net', () => {
-    expect(['Sunday', 'الأحد', 'U', 'thu', 'R', 'Wednesday'].map(normalizeDay)).toEqual(['sun', 'sun', 'sun', 'thu', 'thu', 'wed']);
+    expect(['Sunday', 'الأحد', 'U', 'thu', 'R', 'Wednesday', 'ثن', 'ر'].map(normalizeDay)).toEqual(['sun', 'sun', 'sun', 'thu', 'thu', 'wed', 'mon', 'wed']);
     expect(normalizeDay('yesterday')).toBeNull();
   });
 

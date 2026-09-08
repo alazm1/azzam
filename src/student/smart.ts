@@ -26,7 +26,7 @@ export interface SmartUniversityResponse {
 const DAY_ALIASES: Record<string, DayKey> = {
   sunday: 'sun', monday: 'mon', tuesday: 'tue', wednesday: 'wed', thursday: 'thu', friday: 'fri', saturday: 'sat',
   u: 'sun', m: 'mon', t: 'tue', w: 'wed', r: 'thu', f: 'fri', s: 'sat',
-  'ح': 'sun', 'ن': 'mon', 'ث': 'tue', 'ر': 'wed', 'خ': 'thu', 'ج': 'fri', 'س': 'sat',
+  'ح': 'sun', 'ن': 'mon', 'ثن': 'mon', 'ث': 'tue', 'ر': 'wed', 'خ': 'thu', 'ج': 'fri', 'س': 'sat',
   'الأحد': 'sun', 'الاحد': 'sun', 'الإثنين': 'mon', 'الاثنين': 'mon', 'الثلاثاء': 'tue', 'الأربعاء': 'wed', 'الاربعاء': 'wed', 'الخميس': 'thu', 'الجمعة': 'fri', 'السبت': 'sat',
 };
 
